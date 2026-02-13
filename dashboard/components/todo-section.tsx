@@ -48,7 +48,7 @@ export function TodoSection({
       <CollapsibleContent>
         <div className="grid gap-2 pb-4 pl-4">
           {section.items.map((item, index) => (
-            <TodoCard key={`${item.title}-${index}`} item={item} />
+            <TodoCard key={`${item.title}-${index}`} item={item} status={section.status} />
           ))}
         </div>
       </CollapsibleContent>

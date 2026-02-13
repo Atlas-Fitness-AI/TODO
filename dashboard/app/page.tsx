@@ -12,6 +12,7 @@ export default async function Page() {
   const defaultTab = cookieStore.get("selected_tab")?.value
     ? decodeURIComponent(cookieStore.get("selected_tab")!.value)
     : null
+  const defaultTheme = cookieStore.get("theme")?.value || "system"
   const projects = await loadAllProjects()
   return (
     <Dashboard
@@ -19,6 +20,7 @@ export default async function Page() {
       defaultSidebarOpen={sidebarOpen}
       defaultProjectIndex={Number.isNaN(defaultProjectIndex) ? null : defaultProjectIndex}
       defaultTab={defaultTab}
+      defaultTheme={defaultTheme}
     />
   )
 }

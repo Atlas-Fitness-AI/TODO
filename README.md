@@ -39,16 +39,18 @@ If you already have a `TODO.md`, init will migrate it — parsing your existing 
 ## Commands
 
 ```
-/todo               Status overview
-/todo add [desc]    Add a new item (bug, feature, or task)
-/todo done [item]   Mark as completed and archive
-/todo next          Pick the highest-priority ready item
-/todo stuck [item]  Mark as blocked with a reason
-/todo status        Full overview by status
-/todo scan          Find inline TODO/FIXME comments and sync them
-/todo init          Initialize or migrate TODO system
-/todo update        Pull latest templates and audit existing items
-/todo help          Quick reference
+/todo                       Status overview
+/todo add [desc]            Add a new item (bug, feature, or task)
+/todo done [item]           Mark as completed and archive
+/todo move [item] [status]  Move an item to any status directly
+/todo start [item]          Start a task with a full briefing
+/todo next                  Pick the highest-priority ready item
+/todo stuck [item]          Mark as blocked with a reason
+/todo status                Full overview by status
+/todo scan                  Find inline TODO/FIXME comments and sync them
+/todo init                  Initialize or migrate TODO system
+/todo update                Pull latest templates and audit existing items
+/todo help                  Quick reference
 ```
 
 ## How It Works
@@ -124,8 +126,11 @@ Open `http://localhost:3000` to see your tasks. The dashboard reads `TODO.md` fi
 **Features:**
 - Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
 - Switch between status tabs (Active, Blocked, Ready, Backlog, Done)
-- Right-click projects to remove them
-- UI state persists across page reloads (selected project, active tab, sidebar)
+- Search and filter tasks by priority, category, or keyword
+- Light/Dark/System theme toggle with cookie-based persistence
+- Auto-refresh — dashboard updates within seconds when `TODO.md` changes externally
+- Right-click projects to rename or remove them
+- UI state persists across page reloads (selected project, active tab, sidebar, theme)
 - Sci-fi aesthetic with spotlight card effects
 
 Projects are stored in `~/.claudedo/config.json`. You can add them via the "+" button in the sidebar or edit the file directly.

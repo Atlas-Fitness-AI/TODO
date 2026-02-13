@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   SidebarProvider,
   SidebarInset,
@@ -12,7 +12,10 @@ import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs"
 import { AppSidebar } from "./app-sidebar"
 import { StatusOverview } from "./status-overview"
 import { TodoCard } from "./todo-card"
-import type { ParsedProject, Status } from "@/lib/types"
+import { ThemeToggle } from "./theme-toggle"
+import { TaskFilters } from "./task-filters"
+import { useProjectPolling } from "@/lib/use-project-polling"
+import type { ParsedProject, Priority, Status, TodoItem } from "@/lib/types"
 
 const TAB_ORDER: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
 
@@ -77,17 +80,39 @@ interface DashboardProps {
   defaultSidebarOpen?: boolean
   defaultProjectIndex?: number | null
   defaultTab?: string | null
+  defaultTheme?: string
 }
 
-export function Dashboard({ projects, defaultSidebarOpen, defaultProjectIndex, defaultTab }: DashboardProps) {
+export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme }: DashboardProps) {
+  const projects = useProjectPolling(initialProjects)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
-    defaultProjectIndex !== undefined && defaultProjectIndex !== null && defaultProjectIndex < projects.length
+    defaultProjectIndex !== undefined && defaultProjectIndex !== null && defaultProjectIndex < initialProjects.length
       ? defaultProjectIndex
-      : projects.length > 0 ? 0 : null
+      : initialProjects.length > 0 ? 0 : null
   )
   const [selectedTab, setSelectedTab] = useState(
     defaultTab && TAB_ORDER.includes(defaultTab as Status) ? defaultTab : "In Progress"
   )
+  const [searchQuery, setSearchQuery] = useState("")
+  const [priorityFilter, setPriorityFilter] = useState<Set<Priority>>(new Set())
+  const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
+
+  function filterItems(items: TodoItem[]): TodoItem[] {
+    return items.filter((item) => {
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        const matchesTitle = item.title.toLowerCase().includes(q)
+        const matchesDesc = item.description?.toLowerCase().includes(q)
+        const matchesCat = item.category.some((c) => c.toLowerCase().includes(q))
+        if (!matchesTitle && !matchesDesc && !matchesCat) return false
+      }
+      if (priorityFilter.size > 0 && !priorityFilter.has(item.priority)) return false
+      if (categoryFilter.size > 0 && !item.category.some((c) => categoryFilter.has(c))) return false
+      return true
+    })
+  }
+
+  const hasActiveFilters = searchQuery !== "" || priorityFilter.size > 0 || categoryFilter.size > 0
 
   function handleSelect(index: number) {
     setSelectedIndex(index)
@@ -123,6 +148,19 @@ export function Dashboard({ projects, defaultSidebarOpen, defaultProjectIndex, d
               <TabsList variant="line" className="!bg-transparent !p-0 !h-auto">
                 <StatusOverview sections={selectedProject.sections} />
               </TabsList>
+              <div className="ml-auto flex items-center gap-3">
+                <TaskFilters
+                  project={selectedProject}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  priorityFilter={priorityFilter}
+                  onPriorityChange={setPriorityFilter}
+                  categoryFilter={categoryFilter}
+                  onCategoryChange={setCategoryFilter}
+                />
+                <Separator orientation="vertical" className="!h-4 !self-auto" />
+                <ThemeToggle defaultTheme={defaultTheme} />
+              </div>
             </header>
             <div className="scanlines flex flex-1 min-h-0 overflow-hidden">
               {/* Cards */}
@@ -136,18 +174,21 @@ export function Dashboard({ projects, defaultSidebarOpen, defaultProjectIndex, d
                       const section = selectedProject.sections.find(
                         (s) => s.status === status
                       )
+                      const allItems = section?.items ?? []
+                      const filteredItems = filterItems(allItems)
                       return (
                         <TabsContent
                           key={status}
                           value={status}
-                          className={section && section.items.length > 0 ? "" : "flex-1 flex flex-col"}
+                          className={filteredItems.length > 0 ? "" : "flex-1 flex flex-col"}
                         >
-                          {section && section.items.length > 0 ? (
+                          {filteredItems.length > 0 ? (
                             <div className="grid gap-3">
-                              {section.items.map((item, index) => (
+                              {filteredItems.map((item, index) => (
                                 <TodoCard
                                   key={`${item.title}-${index}`}
                                   item={item}
+                                  status={status}
                                 />
                               ))}
                             </div>
@@ -155,10 +196,12 @@ export function Dashboard({ projects, defaultSidebarOpen, defaultProjectIndex, d
                             <div className="flex flex-1 items-center justify-center border border-dashed border-muted-foreground/30">
                               <div className="text-center space-y-2">
                                 <div className="text-xs font-mono text-primary/60 glow-rose">
-                                  &gt; EMPTY
+                                  {hasActiveFilters ? "> NO MATCHES" : "> EMPTY"}
                                 </div>
                                 <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
-                                  no items in {TAB_LABELS[status]}
+                                  {hasActiveFilters
+                                    ? `no items match filters in ${TAB_LABELS[status]}`
+                                    : `no items in ${TAB_LABELS[status]}`}
                                 </p>
                               </div>
                             </div>
@@ -283,6 +326,9 @@ export function Dashboard({ projects, defaultSidebarOpen, defaultProjectIndex, d
               <span className="text-xs font-mono uppercase tracking-[0.15em] text-muted-foreground">
                 no project selected
               </span>
+              <div className="ml-auto">
+                <ThemeToggle defaultTheme={defaultTheme} />
+              </div>
             </header>
             <div className="scanlines flex-1 min-h-0">
               <div className="flex items-center justify-center h-full">

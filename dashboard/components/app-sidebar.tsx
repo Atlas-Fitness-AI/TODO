@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
 import type { ParsedProject } from "@/lib/types"
 import { getActiveItemCount } from "@/lib/parser"
 import { AddProjectDialog } from "@/components/add-project-dialog"
@@ -50,6 +51,32 @@ export function AppSidebar({
     name: string
     index: number
   } | null>(null)
+  const [renameTarget, setRenameTarget] = useState<{
+    path: string
+    name: string
+  } | null>(null)
+  const [renameName, setRenameName] = useState("")
+  const [renaming, setRenaming] = useState(false)
+
+  async function handleConfirmRename() {
+    if (!renameTarget || !renameName.trim()) return
+    setRenaming(true)
+    try {
+      const res = await fetch("/api/projects", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: renameTarget.path, name: renameName.trim() }),
+      })
+      if (res.ok) {
+        router.refresh()
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setRenaming(false)
+      setRenameTarget(null)
+    }
+  }
 
   async function handleConfirmRemove() {
     if (!removeTarget) return
@@ -125,6 +152,14 @@ export function AppSidebar({
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem
+                          onClick={() => {
+                            setRenameTarget({ path: project.path, name: project.name })
+                            setRenameName(project.name)
+                          }}
+                        >
+                          Rename project
+                        </ContextMenuItem>
+                        <ContextMenuItem
                           variant="destructive"
                           onClick={() =>
                             setRemoveTarget({
@@ -156,6 +191,48 @@ export function AppSidebar({
       </Sidebar>
 
       <AlertDialog
+        open={renameTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+              <span className="text-primary">&gt;</span> Rename Project
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a new name for <span className="text-foreground font-medium">{renameTarget?.name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={renameName}
+            onChange={(e) => setRenameName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                handleConfirmRename()
+              }
+            }}
+            className="font-mono text-[11px]"
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel className="uppercase tracking-[0.15em] font-mono text-[10px]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRename}
+              disabled={!renameName.trim() || renaming}
+              className="uppercase tracking-[0.15em] font-mono text-[10px]"
+            >
+              {renaming ? "Saving..." : "Rename"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
         open={removeTarget !== null}
         onOpenChange={(open) => {
           if (!open) setRemoveTarget(null)
@@ -172,10 +249,12 @@ export function AppSidebar({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="uppercase tracking-[0.15em] font-mono text-[10px]">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmRemove}
-              className="bg-destructive/10 text-destructive hover:bg-destructive/20"
+              className="uppercase tracking-[0.15em] font-mono text-[10px]"
             >
               Remove
             </AlertDialogAction>

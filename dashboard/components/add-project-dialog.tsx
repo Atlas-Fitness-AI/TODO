@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Dialog,
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 
 export function AddProjectDialog() {
   const router = useRouter()
+  const triggerId = useId()
   const [open, setOpen] = useState(false)
   const [path, setPath] = useState("")
   const [name, setName] = useState("")
@@ -130,6 +131,7 @@ export function AddProjectDialog() {
       <DialogTrigger
         render={
           <button
+            id={triggerId}
             className="size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors"
             aria-label="Add project"
           />

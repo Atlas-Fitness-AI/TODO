@@ -147,6 +147,52 @@ function parseFields(lines: string[]): Record<string, string> {
   return fields
 }
 
+export function parseDoneMarkdown(content: string): TodoItem[] {
+  const itemBlocks = content.split(/(?=^### )/m).filter((block) => block.trim())
+  const items: TodoItem[] = []
+
+  for (const block of itemBlocks) {
+    const lines = block.split("\n")
+    const titleMatch = lines[0]?.match(/^###\s+(.+)/)
+    if (!titleMatch) continue
+
+    const title = titleMatch[1].trim()
+    const fields = parseFields(lines.slice(1))
+
+    const priority = VALID_PRIORITIES.includes(fields.priority as Priority)
+      ? (fields.priority as Priority)
+      : "Medium"
+
+    const category = fields.category
+      ? fields.category.split(",").map((c: string) => c.trim())
+      : []
+
+    const files = fields.files
+      ? fields.files
+          .split(",")
+          .map((f: string) => f.trim().replace(/`/g, ""))
+          .filter(Boolean)
+      : undefined
+
+    items.push({
+      title,
+      priority,
+      category,
+      status: "Done",
+      ...(fields.description && { description: fields.description }),
+      ...(files && files.length > 0 && { files }),
+      ...(fields.context && { context: fields.context }),
+      ...(fields.acceptance && { acceptance: fields.acceptance }),
+      ...(fields.added && { added: fields.added }),
+      ...(fields.started && { started: fields.started }),
+      ...(fields.completed && { completed: fields.completed }),
+      ...(fields.resolution && { resolution: fields.resolution }),
+    })
+  }
+
+  return items
+}
+
 export function getTotalItemCount(sections: TodoSection[]): number {
   return sections.reduce((sum, section) => sum + section.items.length, 0)
 }

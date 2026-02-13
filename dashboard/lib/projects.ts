@@ -3,7 +3,7 @@ import { existsSync } from "fs"
 import { join } from "path"
 import { homedir } from "os"
 import type { AppConfig, ParsedProject, ProjectConfig } from "./types"
-import { parseTodoMarkdown } from "./parser"
+import { parseTodoMarkdown, parseDoneMarkdown } from "./parser"
 
 const CONFIG_PATH = join(homedir(), ".claudedo", "config.json")
 
@@ -32,14 +32,9 @@ export async function loadProject(
   const donePath = join(config.path, "DONE.md")
   if (existsSync(donePath)) {
     const doneContent = await readFile(donePath, "utf-8")
-    const doneParsed = parseTodoMarkdown(doneContent)
+    const archivedItems = parseDoneMarkdown(doneContent)
 
-    // Merge done items into the Done section
     const doneSection = parsed.sections.find((s) => s.status === "Done")
-    const archivedItems = doneParsed.sections.flatMap((s) =>
-      s.items.map((item) => ({ ...item, status: "Done" as const }))
-    )
-
     if (doneSection) {
       doneSection.items.push(...archivedItems)
     }

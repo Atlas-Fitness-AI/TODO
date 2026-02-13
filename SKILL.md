@@ -1,7 +1,7 @@
 ---
 name: todo
 description: Manage project TODO items with strict documentation standards. Use when working with TODO.md, discussing tasks/bugs/features, or when the user mentions todos, work items, or task tracking.
-argument-hint: [add|done|next|stuck|status|scan|init|update|help]
+argument-hint: [add|done|move|start|next|stuck|status|scan|init|update|help]
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -53,6 +53,7 @@ Use the `/todo` skill to manage items:
 - `/todo` or `/todo status` — overview of all items
 - `/todo add [description]` — add a new item (bugs, features, tasks)
 - `/todo done [item]` — mark an item as completed
+- `/todo start [item]` — start working on a specific task (with briefing)
 - `/todo next` — pick the highest-priority item to work on
 - `/todo stuck [item]` — mark an item as blocked
 - `/todo scan` — find inline TODO comments in code and sync them
@@ -143,6 +144,49 @@ Omit fields that don't apply (don't include empty fields).
    - If `archive: false`: Move the item to the `## Done` section at the bottom of TODO.md.
 5. Check referenced files for related `// TODO:` comments. If found, offer to remove them.
 
+### `move` - Move Item to Any Status
+
+Move an item directly to a specific status, handling required fields for the target.
+
+1. Parse `$ARGUMENTS` after "move". Expect a pattern like `move [item] [status]` or `move [item] to [status]`.
+   - `[item]` can be a partial title match, item number, or keyword.
+   - `[status]` must be one of: `backlog`, `ready`, `in-progress` (or `active`), `stuck` (or `blocked`), `done`.
+   - If either is ambiguous or missing, ask the user.
+2. Identify the item in TODO.md. If multiple items match, list them and ask.
+3. Validate the transition and gather required fields for the target status:
+   - **→ Backlog**: No extra fields required. Remove `Started` date if present.
+   - **→ Ready**: No extra fields required. Remove `Started` date and `Blocked` reason if present.
+   - **→ In Progress**: Add `- **Started**: [today's date]` if not already present. Remove `Blocked` reason if present.
+   - **→ Stuck**: Require a `Blocked` reason — ask the user if not provided. Add `- **Blocked**: [reason]`.
+   - **→ Done**: Require a resolution note — ask the user if not provided. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]`. If archive is enabled, move to the archive file instead of the Done section.
+4. Remove the item from its current status section.
+5. Insert the item into the target status section, ordered by priority within the section.
+6. Confirm the move: show the item title, old status → new status.
+
+Status aliases (case-insensitive):
+- `backlog` → Backlog
+- `ready`, `queued` → Ready
+- `in-progress`, `active`, `wip` → In Progress
+- `stuck`, `blocked` → Stuck
+- `done`, `complete`, `finished`, `resolve` → Done
+
+### `start` - Start Working on a Specific Task
+
+Pick a specific item and begin working on it, with a full briefing.
+
+1. Parse `$ARGUMENTS` after "start". `[item]` can be a partial title match, item number, or keyword.
+   - If ambiguous or missing, list Ready and Backlog items and ask which one.
+2. Identify the item in TODO.md. If multiple items match, list them and ask.
+3. Move the item to **In Progress**:
+   - Add `- **Started**: [today's date]` if not already present.
+   - Remove `Blocked` reason if present (item was previously Stuck).
+   - Remove the item from its current section and insert into **In Progress**, ordered by priority.
+4. Display a **task briefing**:
+   - Show the full item with all fields.
+   - If the item has **Files** references, read each referenced file and summarize the relevant code around the referenced line numbers.
+   - Based on the item's description, acceptance criteria, and context, suggest a concrete starting approach — what to look at first, what the likely implementation steps are, and any potential gotchas.
+5. Confirm: show the item title and the status transition (e.g. Ready → In Progress).
+
 ### `next` - Pick Next Task
 
 1. Look at items in the **Ready** section only.
@@ -197,16 +241,18 @@ Focus attention on In Progress and Stuck items first.
 Display this quick reference:
 
 ```
-/todo               Show status overview (same as /todo status)
-/todo add [desc]    Add a new TODO item with enforced documentation
-/todo done [item]   Mark an item as completed and archive it
-/todo next          Pick the highest-priority Ready item to work on
-/todo stuck [item]  Mark an item as blocked with a reason
-/todo status        Overview of all items by status
-/todo scan          Find inline // TODO comments and sync with TODO.md
-/todo init          Initialize TODO system (or migrate existing TODO.md)
-/todo update        Refresh TODORULES.md template and audit items
-/todo help          Show this reference
+/todo                       Show status overview (same as /todo status)
+/todo add [desc]            Add a new TODO item with enforced documentation
+/todo done [item]           Mark an item as completed and archive it
+/todo move [item] [status]  Move an item to any status directly
+/todo start [item]          Start working on a specific task (with briefing)
+/todo next                  Pick the highest-priority Ready item to work on
+/todo stuck [item]          Mark an item as blocked with a reason
+/todo status                Overview of all items by status
+/todo scan                  Find inline // TODO comments and sync with TODO.md
+/todo init                  Initialize TODO system (or migrate existing TODO.md)
+/todo update                Refresh TODORULES.md template and audit items
+/todo help                  Show this reference
 
 Updating the skill:
   After pulling updates from the todo skill repo, run ./install.sh

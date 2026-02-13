@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { readFile, writeFile, access, mkdir } from "fs/promises"
 import { join, basename } from "path"
 import { homedir } from "os"
+import { loadAllProjects } from "@/lib/projects"
 
 const CONFIG_DIR = join(homedir(), ".claudedo")
 const CONFIG_PATH = join(CONFIG_DIR, "config.json")
@@ -60,6 +61,19 @@ async function validateProject(trimmedPath: string) {
   return {
     derivedName: derivedName || basename(trimmedPath),
     config,
+  }
+}
+
+// Get all parsed projects
+export async function GET() {
+  try {
+    const projects = await loadAllProjects()
+    return NextResponse.json(projects)
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to load projects" },
+      { status: 500 }
+    )
   }
 }
 
@@ -139,6 +153,53 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "Failed to add project" },
+      { status: 500 }
+    )
+  }
+}
+
+// Rename a project
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const { path: projectPath, name } = body as { path: string; name: string }
+
+    if (!projectPath || typeof projectPath !== "string") {
+      return NextResponse.json(
+        { error: "Path is required" },
+        { status: 400 }
+      )
+    }
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return NextResponse.json(
+        { error: "Name is required" },
+        { status: 400 }
+      )
+    }
+
+    const config = await loadConfig()
+    const project = config.projects.find((p) => p.path === projectPath)
+
+    if (!project) {
+      return NextResponse.json(
+        { error: "Project not found" },
+        { status: 404 }
+      )
+    }
+
+    project.name = name.trim()
+
+    await mkdir(CONFIG_DIR, { recursive: true })
+    await writeFile(
+      CONFIG_PATH,
+      JSON.stringify(config, null, 2),
+      "utf-8"
+    )
+
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to rename project" },
       { status: 500 }
     )
   }
