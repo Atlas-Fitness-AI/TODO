@@ -175,7 +175,7 @@ export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) 
           color="rgba(255, 100, 50, 0.06)"
           revealContent={
             <div className="absolute inset-0 flex items-start justify-end p-4">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-white mt-[3px] mr-16">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-black dark:text-white mt-[3px] mr-16">
                 {hiddenMessage}
               </span>
             </div>
