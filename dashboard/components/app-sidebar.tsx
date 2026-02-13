@@ -228,7 +228,7 @@ export function AppSidebar({
         <SidebarFooter className="border-t border-border px-4 py-3">
           <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
             <span>version</span>
-            <span>0.1.0</span>
+            <span>0.1.1</span>
           </div>
         </SidebarFooter>
       </Sidebar>
