@@ -47,11 +47,11 @@ const PRIORITY_CONFIG: Record<
 }
 
 const STATUS_BORDER_COLOR: Record<Status, string> = {
-  "In Progress": "oklch(0.707 0.165 254.624)",
-  Stuck: "oklch(0.704 0.191 22.216)",
-  Ready: "oklch(0.852 0.199 91.936)",
-  Backlog: "oklch(0.552 0.016 285.938)",
-  Done: "oklch(0.723 0.191 149.579)",
+  Active: "oklch(0.707 0.165 254.624)",
+  Blocked: "oklch(0.704 0.191 22.216)",
+  Queued: "oklch(0.852 0.199 91.936)",
+  Pending: "oklch(0.552 0.016 285.938)",
+  Resolved: "oklch(0.723 0.191 149.579)",
 }
 
 const HIDDEN_MESSAGES = [
@@ -75,15 +75,15 @@ function getStableMessage(title: string) {
   return HIDDEN_MESSAGES[Math.abs(hash) % HIDDEN_MESSAGES.length]
 }
 
-const ALL_STATUSES: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
+const ALL_STATUSES: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 const ALL_PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
 
 const STATUS_LABELS: Record<Status, string> = {
-  "In Progress": "In Progress",
-  Stuck: "Stuck",
-  Ready: "Ready",
-  Backlog: "Backlog",
-  Done: "Done",
+  Active: "Active",
+  Blocked: "Blocked",
+  Queued: "Queued",
+  Pending: "Pending",
+  Resolved: "Resolved",
 }
 
 interface TodoCardProps {

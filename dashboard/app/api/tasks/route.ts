@@ -9,7 +9,7 @@ import type { Priority, Status, TodoItem, AppConfig, ActivityEvent } from "@/lib
 
 const CONFIG_PATH = join(homedir(), ".claudedo", "config.json")
 
-const VALID_STATUSES: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
+const VALID_STATUSES: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 const VALID_PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
 
 async function isRegisteredProject(projectPath: string): Promise<boolean> {
@@ -30,19 +30,19 @@ function applyStatusFields(item: TodoItem, oldStatus: Status, newStatus: Status)
   const updated = { ...item, status: newStatus }
 
   switch (newStatus) {
-    case "In Progress":
+    case "Active":
       if (!updated.started) updated.started = getToday()
       delete updated.blocked
       break
-    case "Stuck":
+    case "Blocked":
       if (!updated.blocked) updated.blocked = "Moved via dashboard"
       break
-    case "Ready":
-    case "Backlog":
+    case "Queued":
+    case "Pending":
       delete updated.started
       delete updated.blocked
       break
-    case "Done":
+    case "Resolved":
       updated.completed = getToday()
       if (!updated.resolution) updated.resolution = "Completed via dashboard"
       break
@@ -53,11 +53,11 @@ function applyStatusFields(item: TodoItem, oldStatus: Status, newStatus: Status)
 
 function getActivityAction(newStatus: Status): { action: string; color: string } {
   switch (newStatus) {
-    case "In Progress":
+    case "Active":
       return { action: "STARTED", color: "text-blue-400" }
-    case "Done":
+    case "Resolved":
       return { action: "COMPLETED", color: "text-green-400" }
-    case "Stuck":
+    case "Blocked":
       return { action: "BLOCKED", color: "text-red-400" }
     default:
       return { action: "MOVED", color: "text-yellow-400" }
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const targetStatus = status || "Ready"
+    const targetStatus = status || "Queued"
     if (!VALID_STATUSES.includes(targetStatus)) {
       return NextResponse.json(
         { error: `Invalid status: ${targetStatus}` },
@@ -164,7 +164,7 @@ export async function POST(request: Request) {
       status: targetStatus,
       ...(description?.trim() && { description: description.trim() }),
       added: getToday(),
-      ...(targetStatus === "In Progress" && { started: getToday() }),
+      ...(targetStatus === "Active" && { started: getToday() }),
     }
 
     const targetSection = parsed.sections.find((s) => s.status === targetStatus)
@@ -324,12 +324,12 @@ export async function PATCH(request: Request) {
       const updatedItem = applyStatusFields(foundItem, foundSection, newStatus)
 
       // Handle Done with archiving
-      if (newStatus === "Done") {
+      if (newStatus === "Resolved") {
         const archiveConfig = await getArchiveConfig(projectPath)
 
         if (archiveConfig.archive) {
           const filteredSections = parsed.sections.map((s) =>
-            s.status === "Done" ? { ...s, items: s.items.filter((i) => i.title !== title) } : s
+            s.status === "Resolved" ? { ...s, items: s.items.filter((i) => i.title !== title) } : s
           )
           await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, filteredSections), "utf-8")
 
@@ -357,7 +357,7 @@ export async function PATCH(request: Request) {
 
           await writeFile(archivePath, archiveContent, "utf-8")
         } else {
-          const doneSection = parsed.sections.find((s) => s.status === "Done")
+          const doneSection = parsed.sections.find((s) => s.status === "Resolved")
           if (doneSection) doneSection.items.unshift(updatedItem)
           await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, parsed.sections), "utf-8")
         }

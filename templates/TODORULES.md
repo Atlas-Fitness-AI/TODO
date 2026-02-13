@@ -28,12 +28,12 @@ Rules and configuration for this project's TODO system. Claude reads this file w
 
 | Field            | Purpose                                    |
 | :--------------- | :----------------------------------------- |
-| **Dependencies** | Other TODO items this depends on           |
-| **Started**      | Date work began (auto-set on In Progress)  |
-| **Completed**    | Date finished (auto-set on Done)           |
-| **Resolution**   | What was done to resolve (auto-set on Done)|
-| **Blocked**      | Reason for being stuck (required on Stuck) |
-| **Added**        | Date item was created                      |
+| **Dependencies** | Other TODO items this depends on              |
+| **Started**      | Date work began (auto-set on Active)          |
+| **Completed**    | Date finished (auto-set on Resolved)          |
+| **Resolution**   | What was done to resolve (auto-set on Resolved)|
+| **Blocked**      | Reason for being blocked (required on Blocked) |
+| **Added**        | Date item was created                          |
 
 ---
 
@@ -43,20 +43,20 @@ Items flow through these statuses. Each section in TODO.md corresponds to one st
 
 | Status          | Meaning                                              |
 | :-------------- | :--------------------------------------------------- |
-| **Backlog**     | Identified but not fully defined. Missing info needed before work can start. |
-| **Ready**       | Well-defined with all required fields. Can be picked up immediately. |
-| **In Progress** | Actively being worked on. Should have a **Started** date. |
-| **Stuck**       | Blocked or needs input. Must have a **Blocked** reason. |
-| **Done**        | Completed and verified. Has **Completed** date and **Resolution**. |
+| **Pending**     | Identified but not fully defined. Missing info needed before work can start. |
+| **Queued**      | Well-defined with all required fields. Can be picked up immediately. |
+| **Active**      | Actively being worked on. Should have a **Started** date. |
+| **Blocked**     | Blocked or needs input. Must have a **Blocked** reason. |
+| **Resolved**    | Completed and verified. Has **Completed** date and **Resolution**. |
 
 ### Transitions
 
 ```
-Backlog ──→ Ready ──→ In Progress ──→ Done
-                  ↕         ↕
-                Stuck ←──────┘
-                  │
-                  └──→ Ready (when unblocked)
+Pending ──→ Queued ──→ Active ──→ Resolved
+                   ↕        ↕
+                Blocked ←────┘
+                   │
+                   └──→ Queued (when unblocked)
 ```
 
 ---

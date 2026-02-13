@@ -44,7 +44,7 @@ If you already have a `TODO.md`, init will migrate it — parsing your existing 
 /todo done [item]           Mark as completed and archive
 /todo move [item] [status]  Move an item to any status directly
 /todo start [item]          Start a task with a full briefing
-/todo next                  Pick the highest-priority ready item
+/todo next                  Pick the highest-priority queued item
 /todo stuck [item]          Mark as blocked with a reason
 /todo status                Full overview by status
 /todo scan                  Find inline TODO/FIXME comments and sync them
@@ -75,18 +75,18 @@ Bugs require file references and context. Features require acceptance criteria. 
 ### Status Flow
 
 ```
-Backlog --> Ready --> In Progress --> Done
-                 |         |
-                 +- Stuck <+
+Pending --> Queued --> Active --> Resolved
+                 |        |
+                 +- Blocked <+
                  |
-                 +--> Ready (when unblocked)
+                 +--> Queued (when unblocked)
 ```
 
-- **Backlog** — identified but not fully defined
-- **Ready** — all required fields present, can be picked up
-- **In Progress** — actively being worked on
-- **Stuck** — blocked, must have a reason
-- **Done** — completed and archived
+- **Pending** — identified but not fully defined
+- **Queued** — all required fields present, can be picked up
+- **Active** — actively being worked on
+- **Blocked** — blocked, must have a reason
+- **Resolved** — completed and archived
 
 ### Archiving
 
@@ -134,7 +134,7 @@ The dashboard reads `TODO.md` files directly from disk — no server or database
 
 **Features:**
 - Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
-- Switch between status tabs (Active, Blocked, Ready, Backlog, Done)
+- Switch between status tabs (Active, Blocked, Queued, Pending, Resolved)
 - Activity feed — shows task movements (added, started, completed, blocked) with timestamps, powered by `/todo` skill actions
 - Add new tasks directly from the dashboard with priority, status, category, and description
 - Move tasks between statuses and change priority via right-click context menu on cards

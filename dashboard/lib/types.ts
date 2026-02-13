@@ -1,6 +1,6 @@
 export type Priority = "Critical" | "High" | "Medium" | "Low"
 
-export type Status = "In Progress" | "Stuck" | "Ready" | "Backlog" | "Done"
+export type Status = "Active" | "Blocked" | "Queued" | "Pending" | "Resolved"
 
 export interface TodoItem {
   title: string

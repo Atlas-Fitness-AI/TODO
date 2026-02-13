@@ -28,14 +28,14 @@ import { useProjectPolling } from "@/lib/use-project-polling"
 import { formatRelativeTime } from "@/lib/activity"
 import type { ParsedProject, Priority, Status, TodoItem } from "@/lib/types"
 
-const TAB_ORDER: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
+const TAB_ORDER: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 
 const TAB_LABELS: Record<Status, string> = {
-  "In Progress": "active",
-  Stuck: "blocked",
-  Ready: "ready",
-  Backlog: "backlog",
-  Done: "done",
+  Active: "active",
+  Blocked: "blocked",
+  Queued: "queued",
+  Pending: "pending",
+  Resolved: "resolved",
 }
 
 interface ActivityItemProps {
@@ -111,7 +111,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
       : initialProjects.length > 0 ? 0 : null
   )
   const [selectedTab, setSelectedTab] = useState(
-    defaultTab && TAB_ORDER.includes(defaultTab as Status) ? defaultTab : "In Progress"
+    defaultTab && TAB_ORDER.includes(defaultTab as Status) ? defaultTab : "Active"
   )
   const [searchQuery, setSearchQuery] = useState("")
   const [priorityFilter, setPriorityFilter] = useState<Set<Priority>>(new Set())

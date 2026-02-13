@@ -1,11 +1,11 @@
 import type { TodoItem, TodoSection, Priority, Status } from "./types"
 
 const VALID_STATUSES: Status[] = [
-  "In Progress",
-  "Stuck",
-  "Ready",
-  "Backlog",
-  "Done",
+  "Active",
+  "Blocked",
+  "Queued",
+  "Pending",
+  "Resolved",
 ]
 
 const VALID_PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
@@ -205,7 +205,7 @@ export function parseDoneMarkdown(content: string): TodoItem[] {
         title,
         priority,
         category,
-        status: "Done",
+        status: "Resolved",
         ...(fields.description && { description: fields.description }),
         ...(files && files.length > 0 && { files }),
         ...(fields.context && { context: fields.context }),
@@ -304,7 +304,7 @@ export function serializeTodoMarkdown(
     "",
   ]
 
-  const sectionOrder: Status[] = ["In Progress", "Ready", "Stuck", "Backlog", "Done"]
+  const sectionOrder: Status[] = ["Active", "Queued", "Blocked", "Pending", "Resolved"]
 
   for (const status of sectionOrder) {
     lines.push(`## ${status}`)
@@ -341,6 +341,6 @@ export function getTotalItemCount(sections: TodoSection[]): number {
 
 export function getActiveItemCount(sections: TodoSection[]): number {
   return sections
-    .filter((s) => s.status !== "Done")
+    .filter((s) => s.status !== "Resolved")
     .reduce((sum, section) => sum + section.items.length, 0)
 }

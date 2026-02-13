@@ -26,9 +26,9 @@ import type { Priority, Status } from "@/lib/types"
 
 const PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
 const STATUSES: { value: Status; label: string }[] = [
-  { value: "Ready", label: "Ready" },
-  { value: "In Progress", label: "In Progress" },
-  { value: "Backlog", label: "Backlog" },
+  { value: "Queued", label: "Queued" },
+  { value: "Active", label: "Active" },
+  { value: "Pending", label: "Pending" },
 ]
 
 interface AddTaskDialogProps {
@@ -42,7 +42,7 @@ export function AddTaskDialog({ projectPath, onAdded }: AddTaskDialogProps) {
   const [priority, setPriority] = useState<Priority>("Medium")
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
-  const [status, setStatus] = useState<Status>("Ready")
+  const [status, setStatus] = useState<Status>("Queued")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,7 +51,7 @@ export function AddTaskDialog({ projectPath, onAdded }: AddTaskDialogProps) {
     setPriority("Medium")
     setCategory("")
     setDescription("")
-    setStatus("Ready")
+    setStatus("Queued")
     setSubmitting(false)
     setError(null)
   }
