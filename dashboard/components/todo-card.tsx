@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import type { TodoItem, Priority, Status } from "@/lib/types"
 import { CardSpotlight } from "@/components/ui/card-spotlight"
 import {
@@ -12,6 +13,15 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
 const PRIORITY_CONFIG: Record<
@@ -86,6 +96,27 @@ interface TodoCardProps {
 export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) {
   const priority = PRIORITY_CONFIG[item.priority]
   const hiddenMessage = getStableMessage(item.title)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+  async function handleDelete() {
+    if (!projectPath) return
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectPath, title: item.title }),
+      })
+      if (res.ok) {
+        toast.success("Task deleted")
+        onMoved?.()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Failed to delete task")
+      }
+    } catch {
+      toast.error("Failed to delete task")
+    }
+  }
 
   async function handleMove(newStatus: Status) {
     if (!projectPath) return
@@ -286,9 +317,41 @@ export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) 
                 ))}
               </ContextMenuSubContent>
             </ContextMenuSub>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              variant="destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              Delete task
+            </ContextMenuItem>
           </>
         )}
       </ContextMenuContent>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+              <span className="text-destructive">&gt;</span> Delete Task
+            </DialogTitle>
+            <DialogDescription>
+              Permanently delete <span className="text-foreground font-medium">{item.title}</span>? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              className="uppercase tracking-[0.15em] font-mono text-[10px]"
+              onClick={() => {
+                handleDelete()
+                setDeleteDialogOpen(false)
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ContextMenu>
   )
 }
