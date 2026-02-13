@@ -48,6 +48,7 @@ If you already have a `TODO.md`, init will migrate it — parsing your existing 
 /todo stuck [item]          Mark as blocked with a reason
 /todo status                Full overview by status
 /todo scan                  Find inline TODO/FIXME comments and sync them
+/todo dashboard             Launch the web dashboard in the browser
 /todo init                  Initialize or migrate TODO system
 /todo update                Pull latest templates and audit existing items
 /todo help                  Quick reference
@@ -115,21 +116,30 @@ This refreshes `TODORULES.md` with the latest template (preserving your customiz
 
 ClaudeDo includes a web dashboard for visualizing tasks across all your projects.
 
+The quickest way to launch it is from Claude Code:
+
+```
+/todo dashboard
+```
+
+This starts the dev server (if not already running), finds a free port, and opens your browser. You can also start it manually:
+
 ```bash
 cd dashboard
 bun install
 bun dev
 ```
 
-Open `http://localhost:3000` to see your tasks. The dashboard reads `TODO.md` files directly from disk — no server or database required.
+The dashboard reads `TODO.md` files directly from disk — no server or database required.
 
 **Features:**
 - Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
 - Switch between status tabs (Active, Blocked, Ready, Backlog, Done)
+- Activity feed — shows task movements (added, started, completed, blocked) with timestamps, powered by `/todo` skill actions
 - Search and filter tasks by priority, category, or keyword
 - Light/Dark/System theme toggle with cookie-based persistence
 - Auto-refresh — dashboard updates within seconds when `TODO.md` changes externally
-- Right-click projects to rename or remove them
+- Right-click projects to rename, remove, copy path, open in Finder, or open in Terminal
 - UI state persists across page reloads (selected project, active tab, sidebar, theme)
 - Sci-fi aesthetic with spotlight card effects
 

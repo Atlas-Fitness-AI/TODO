@@ -17,8 +17,8 @@ const STATUS_CONFIG: Record<
   },
   Ready: {
     label: "QUEUED",
-    color: "text-green-400",
-    dotColor: "bg-green-400",
+    color: "text-yellow-400",
+    dotColor: "bg-yellow-400",
   },
   Backlog: {
     label: "PENDING",
@@ -27,8 +27,8 @@ const STATUS_CONFIG: Record<
   },
   Done: {
     label: "RESOLVED",
-    color: "text-zinc-600",
-    dotColor: "bg-zinc-600",
+    color: "text-green-400",
+    dotColor: "bg-green-400",
   },
 }
 

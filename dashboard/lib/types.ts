@@ -29,6 +29,15 @@ export interface ParsedProject {
   name: string
   path: string
   sections: TodoSection[]
+  activity?: ActivityEvent[]
+}
+
+export interface ActivityEvent {
+  date: string
+  action: string
+  title: string
+  detail: string
+  color: string
 }
 
 export interface ProjectConfig {

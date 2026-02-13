@@ -3,6 +3,7 @@ import { readFile, writeFile, access, mkdir } from "fs/promises"
 import { join, basename } from "path"
 import { homedir } from "os"
 import { loadAllProjects } from "@/lib/projects"
+import { readActivityLog } from "@/lib/activity-log"
 
 const CONFIG_DIR = join(homedir(), ".claudedo")
 const CONFIG_PATH = join(CONFIG_DIR, "config.json")
@@ -64,10 +65,16 @@ async function validateProject(trimmedPath: string) {
   }
 }
 
-// Get all parsed projects
+// Get all parsed projects (with activity diffing)
 export async function GET() {
   try {
     const projects = await loadAllProjects()
+
+    // Attach activity log to each project
+    for (const project of projects) {
+      project.activity = await readActivityLog(project.path)
+    }
+
     return NextResponse.json(projects)
   } catch {
     return NextResponse.json(

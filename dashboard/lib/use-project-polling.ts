@@ -19,6 +19,7 @@ export function useProjectPolling(initialProjects: ParsedProject[]) {
           status: s.status,
           items: s.items.map((i) => i.title + i.status + i.priority),
         })),
+        activityCount: p.activity?.length ?? 0,
       }))
     )
   }, [])

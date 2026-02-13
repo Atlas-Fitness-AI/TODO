@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   Sidebar,
@@ -17,6 +17,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import {
@@ -30,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
 import type { ParsedProject } from "@/lib/types"
 import { getActiveItemCount } from "@/lib/parser"
 import { AddProjectDialog } from "@/components/add-project-dialog"
@@ -77,6 +79,31 @@ export function AppSidebar({
       setRenameTarget(null)
     }
   }
+
+  const handleCopyPath = useCallback(async (path: string) => {
+    try {
+      await navigator.clipboard.writeText(path)
+      toast.success("Path copied to clipboard")
+    } catch {
+      toast.error("Failed to copy path")
+    }
+  }, [])
+
+  const handleOpen = useCallback(async (path: string, target: "finder" | "terminal") => {
+    try {
+      const res = await fetch("/api/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path, target }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        toast.error(data.error || `Failed to open in ${target}`)
+      }
+    } catch {
+      toast.error(`Failed to open in ${target}`)
+    }
+  }, [])
 
   async function handleConfirmRemove() {
     if (!removeTarget) return
@@ -151,6 +178,15 @@ export function AppSidebar({
                         </SidebarMenuItem>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
+                        <ContextMenuItem onClick={() => handleCopyPath(project.path)}>
+                          Copy path
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleOpen(project.path, "finder")}>
+                          Open in Finder
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleOpen(project.path, "terminal")}>
+                          Open in Terminal
+                        </ContextMenuItem>
                         <ContextMenuItem
                           onClick={() => {
                             setRenameTarget({ path: project.path, name: project.name })
@@ -159,6 +195,7 @@ export function AppSidebar({
                         >
                           Rename project
                         </ContextMenuItem>
+                        <ContextMenuSeparator />
                         <ContextMenuItem
                           variant="destructive"
                           onClick={() =>

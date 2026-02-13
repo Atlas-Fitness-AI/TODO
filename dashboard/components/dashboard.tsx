@@ -15,6 +15,7 @@ import { TodoCard } from "./todo-card"
 import { ThemeToggle } from "./theme-toggle"
 import { TaskFilters } from "./task-filters"
 import { useProjectPolling } from "@/lib/use-project-polling"
+import { formatRelativeTime } from "@/lib/activity"
 import type { ParsedProject, Priority, Status, TodoItem } from "@/lib/types"
 
 const TAB_ORDER: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
@@ -37,7 +38,7 @@ interface ActivityItemProps {
 
 function ActivityItem({ time, action, title, detail, color }: ActivityItemProps) {
   return (
-    <div className="flex gap-3 py-3 border-b border-muted-foreground/30 last:border-0 opacity-30 pointer-events-none select-none">
+    <div className="flex gap-3 py-3 border-b border-muted-foreground/30 last:border-0">
       <div className="flex flex-col items-center pt-1">
         <div className={`size-1.5 rounded-full ${color.replace("text-", "bg-")}`} />
         <div className="w-px flex-1 bg-muted-foreground/30 mt-1" />
@@ -127,6 +128,8 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
 
   const selectedProject =
     selectedIndex !== null ? projects[selectedIndex] : null
+
+  const activityEvents = selectedProject?.activity ?? []
 
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen} className="!h-svh overflow-hidden">
@@ -221,97 +224,29 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     activity feed
                   </div>
                   <div className="space-y-0">
-                    <ActivityItem
-                      time="2m ago"
-                      action="moved"
-                      title="Fix authentication timeout"
-                      detail="Ready → In Progress"
-                      color="text-blue-400"
-                    />
-                    <ActivityItem
-                      time="18m ago"
-                      action="added"
-                      title="Add keyboard shortcuts for common actions"
-                      detail="→ Ready"
-                      color="text-green-400"
-                    />
-                    <ActivityItem
-                      time="1h ago"
-                      action="updated"
-                      title="Refactor database connection pooling"
-                      detail="Priority: Medium → High"
-                      color="text-yellow-400"
-                    />
-                    <ActivityItem
-                      time="2h ago"
-                      action="blocked"
-                      title="Migrate user avatars to S3"
-                      detail="Waiting on AWS credentials"
-                      color="text-red-400"
-                    />
-                    <ActivityItem
-                      time="3h ago"
-                      action="added"
-                      title="Build onboarding wizard"
-                      detail="→ Ready"
-                      color="text-green-400"
-                    />
-                    <ActivityItem
-                      time="5h ago"
-                      action="completed"
-                      title="Set up CI/CD pipeline"
-                      detail="In Progress → Done"
-                      color="text-zinc-500"
-                    />
-                    <ActivityItem
-                      time="6h ago"
-                      action="moved"
-                      title="Add email verification flow"
-                      detail="Backlog → Ready"
-                      color="text-green-400"
-                    />
-                    <ActivityItem
-                      time="1d ago"
-                      action="added"
-                      title="Implement CSV export"
-                      detail="→ Ready"
-                      color="text-green-400"
-                    />
-                    <ActivityItem
-                      time="1d ago"
-                      action="updated"
-                      title="Add dark mode toggle"
-                      detail="Description revised"
-                      color="text-yellow-400"
-                    />
-                    <ActivityItem
-                      time="2d ago"
-                      action="moved"
-                      title="Add rate limiting to public API"
-                      detail="Ready → Backlog"
-                      color="text-zinc-500"
-                    />
-                    <ActivityItem
-                      time="2d ago"
-                      action="completed"
-                      title="Fix dropdown z-index bug"
-                      detail="In Progress → Done"
-                      color="text-zinc-500"
-                    />
-                    <ActivityItem
-                      time="3d ago"
-                      action="added"
-                      title="Set up error tracking with Sentry"
-                      detail="→ Ready"
-                      color="text-green-400"
-                    />
-                    <ActivityItem
-                      time="3d ago"
-                      action="blocked"
-                      title="Refactor database connection pooling"
-                      detail="Waiting on staging env access"
-                      color="text-red-400"
-                    />
+                    {activityEvents.length > 0 ? (
+                      activityEvents.map((event, i) => (
+                        <ActivityItem
+                          key={`${event.title}-${event.action}-${i}`}
+                          time={formatRelativeTime(event.date)}
+                          action={event.action}
+                          title={event.title}
+                          detail={event.detail}
+                          color={event.color}
+                        />
+                      ))
+                    ) : (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center space-y-2">
+                          <div className="text-xs font-mono text-primary/60 glow-rose">
+                            &gt; NO ACTIVITY
+                          </div>
+                          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
+                            events appear as tasks are added and moved
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 </ScrollArea>

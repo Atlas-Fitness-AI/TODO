@@ -1,7 +1,7 @@
 ---
 name: todo
 description: Manage project TODO items with strict documentation standards. Use when working with TODO.md, discussing tasks/bugs/features, or when the user mentions todos, work items, or task tracking.
-argument-hint: [add|done|move|start|next|stuck|status|scan|init|update|help]
+argument-hint: [add|done|move|start|next|stuck|status|scan|dashboard|init|update|help]
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -226,6 +226,26 @@ Display a summary:
 
 Focus attention on In Progress and Stuck items first.
 
+### `dashboard` - Launch Web Dashboard
+
+Open the ClaudeDo dashboard in the browser, starting the dev server if needed.
+
+1. Read `~/.claudedo/dashboard-path` to find the dashboard directory.
+   - If the file doesn't exist, check if `~/.claude/skills/todo/dashboard/` exists as a fallback.
+   - If neither exists, tell the user: "Dashboard path not configured. Run `./install.sh` from the ClaudeDo repo to set it up."
+2. Check ports 3000-3009 for an existing ClaudeDo dashboard:
+   - For each port, try: `curl -s http://localhost:<port>/api/projects`
+   - If it returns valid JSON (an array), the dashboard is already running on that port — skip to step 4 using that port.
+3. If no existing dashboard found, start the dev server:
+   - Check if port 3000 is free: `curl -s -o /dev/null -w '%{http_code}' http://localhost:3000` — if it returns `000` (no response), use 3000. Otherwise try 3001, 3002, etc. up to 3009.
+   - Start on the chosen port: `cd <dashboard-path> && bun dev --port <port> &`
+   - Wait a few seconds for the server to start, then verify with a curl to `/api/projects`.
+   - If `bun` is not available, fall back to `npm run dev -- --port <port> &`.
+4. Open the dashboard in the default browser:
+   - macOS: `open http://localhost:<port>`
+   - Linux: `xdg-open http://localhost:<port>`
+5. Confirm to the user that the dashboard is running and which port it's on.
+
 ### `scan` - Find Inline TODOs
 
 1. Use Grep to search for `// TODO:`, `# TODO:`, `<!-- TODO:`, and `// FIXME:` patterns across the codebase.
@@ -250,6 +270,7 @@ Display this quick reference:
 /todo stuck [item]          Mark an item as blocked with a reason
 /todo status                Overview of all items by status
 /todo scan                  Find inline // TODO comments and sync with TODO.md
+/todo dashboard             Launch the web dashboard in the browser
 /todo init                  Initialize TODO system (or migrate existing TODO.md)
 /todo update                Refresh TODORULES.md template and audit items
 /todo help                  Show this reference
@@ -258,6 +279,39 @@ Updating the skill:
   After pulling updates from the todo skill repo, run ./install.sh
   to sync the latest version to ~/.claude/skills/todo/
 ```
+
+## Activity Logging
+
+After every action that modifies TODO.md or DONE.md (`add`, `done`, `move`, `start`, `stuck`), log an event to the project's `.todo-activity.json` file. This powers the dashboard's activity feed.
+
+**Event format:**
+```json
+{
+  "date": "2026-02-12T14:30:00.000Z",
+  "action": "STARTED",
+  "title": "Fix login bug",
+  "detail": "Ready → In Progress",
+  "color": "text-blue-400"
+}
+```
+
+**Action types and colors:**
+- `ADDED` / `text-green-400` — new item added via `add`
+- `STARTED` / `text-blue-400` — item moved to In Progress via `start` or `move`
+- `COMPLETED` / `text-green-400` — item marked done via `done` or `move`
+- `MOVED` / `text-yellow-400` — item moved between other statuses via `move` (e.g. Ready → Backlog)
+- `BLOCKED` / `text-red-400` — item marked stuck via `stuck` or `move`
+
+**Detail field:** Show the status transition, e.g. `"Ready → In Progress"`, `"In Progress → Done"`, `"Added to Ready"`.
+
+**How to log:**
+1. Read the existing `.todo-activity.json` from the project root. If it doesn't exist or is invalid, start with an empty array `[]`.
+2. Create the new event object with the current ISO timestamp (`new Date().toISOString()` format).
+3. Prepend the new event to the front of the array (newest first).
+4. Trim the array to a maximum of 50 events.
+5. Write the array back to `.todo-activity.json` with `JSON.stringify(events, null, 2)`.
+
+**Important:** Log the event in a single write alongside the TODO.md/DONE.md changes. This ensures the activity feed reflects the actual action taken, not intermediate states.
 
 ## Formatting Rules
 

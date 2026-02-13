@@ -8,42 +8,62 @@ import { parseTodoMarkdown, parseDoneMarkdown } from "./parser"
 const CONFIG_PATH = join(homedir(), ".claudedo", "config.json")
 
 export async function loadConfig(): Promise<AppConfig> {
-  if (!existsSync(CONFIG_PATH)) {
+  try {
+    if (!existsSync(CONFIG_PATH)) {
+      return { projects: [] }
+    }
+
+    const raw = await readFile(CONFIG_PATH, "utf-8")
+    const parsed = JSON.parse(raw)
+
+    // Validate minimal structure
+    if (!parsed || !Array.isArray(parsed.projects)) {
+      return { projects: [] }
+    }
+
+    return parsed as AppConfig
+  } catch {
     return { projects: [] }
   }
-
-  const raw = await readFile(CONFIG_PATH, "utf-8")
-  return JSON.parse(raw) as AppConfig
 }
 
 export async function loadProject(
   config: ProjectConfig
 ): Promise<ParsedProject | null> {
-  const todoPath = join(config.path, "TODO.md")
+  try {
+    const todoPath = join(config.path, "TODO.md")
 
-  if (!existsSync(todoPath)) {
-    return null
-  }
-
-  const content = await readFile(todoPath, "utf-8")
-  const parsed = parseTodoMarkdown(content)
-
-  // Also try to load DONE.md for archived items
-  const donePath = join(config.path, "DONE.md")
-  if (existsSync(donePath)) {
-    const doneContent = await readFile(donePath, "utf-8")
-    const archivedItems = parseDoneMarkdown(doneContent)
-
-    const doneSection = parsed.sections.find((s) => s.status === "Done")
-    if (doneSection) {
-      doneSection.items.push(...archivedItems)
+    if (!existsSync(todoPath)) {
+      return null
     }
-  }
 
-  return {
-    name: config.name || parsed.projectName,
-    path: config.path,
-    sections: parsed.sections,
+    const content = await readFile(todoPath, "utf-8")
+    const parsed = parseTodoMarkdown(content)
+
+    // Also try to load DONE.md for archived items
+    try {
+      const donePath = join(config.path, "DONE.md")
+      if (existsSync(donePath)) {
+        const doneContent = await readFile(donePath, "utf-8")
+        const archivedItems = parseDoneMarkdown(doneContent)
+
+        const doneSection = parsed.sections.find((s) => s.status === "Done")
+        if (doneSection) {
+          doneSection.items.push(...archivedItems)
+        }
+      }
+    } catch {
+      // DONE.md parse failure shouldn't prevent loading the project
+    }
+
+    return {
+      name: config.name || parsed.projectName,
+      path: config.path,
+      sections: parsed.sections,
+    }
+  } catch {
+    // Return null so one broken project doesn't kill the rest
+    return null
   }
 }
 

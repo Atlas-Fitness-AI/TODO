@@ -42,7 +42,9 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 - `lib/parser.ts` — regex-based parser converts TODO.md/DONE.md markdown into typed `TodoSection[]`/`TodoItem[]`
 - `lib/projects.ts` — reads `~/.claudedo/config.json` for project paths, loads and parses each project's TODO.md + DONE.md
 
-**API routes** (`app/api/projects/route.ts`): GET (list projects), PUT (validate path), POST (add), PATCH (rename), DELETE (remove). All operate on `~/.claudedo/config.json`.
+**API routes:**
+- `app/api/projects/route.ts` — GET (list projects + activity), PUT (validate path), POST (add), PATCH (rename), DELETE (remove). All operate on `~/.claudedo/config.json`.
+- `app/api/open/route.ts` — POST to open a project path in Finder or Terminal (validates path is a registered project)
 
 **Key patterns:**
 - Cookie-based state persistence (sidebar, selected project, tab, theme) — read on server, passed as `default*` props, written on client via `document.cookie`
@@ -54,8 +56,10 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 ### Config & Storage
 
 - **Project registry**: `~/.claudedo/config.json` — array of `{ name, path }` entries
+- **Dashboard path**: `~/.claudedo/dashboard-path` — used by `/todo dashboard` to locate the dev server
 - **Skill install location**: `~/.claude/skills/todo/`
 - **Task data**: each project's `TODO.md` + `DONE.md` (markdown, parsed on read, no database)
+- **Activity log**: each project's `.todo-activity.json` — event log written by the `/todo` skill on every action, read by the dashboard for the activity feed (newest-first, max 50 events)
 
 ## TODO System
 

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers"
 import { Dashboard } from "@/components/dashboard"
 import { loadAllProjects } from "@/lib/projects"
+import { readActivityLog } from "@/lib/activity-log"
 
 export const dynamic = "force-dynamic"
 
@@ -14,6 +15,9 @@ export default async function Page() {
     : null
   const defaultTheme = cookieStore.get("theme")?.value || "system"
   const projects = await loadAllProjects()
+  for (const project of projects) {
+    project.activity = await readActivityLog(project.path)
+  }
   return (
     <Dashboard
       projects={projects}
