@@ -1,0 +1,306 @@
+"use client"
+
+import { useState } from "react"
+import {
+  SidebarProvider,
+  SidebarInset,
+  useSidebar,
+} from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs"
+import { AppSidebar } from "./app-sidebar"
+import { StatusOverview } from "./status-overview"
+import { TodoCard } from "./todo-card"
+import type { ParsedProject, Status } from "@/lib/types"
+
+const TAB_ORDER: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
+
+const TAB_LABELS: Record<Status, string> = {
+  "In Progress": "active",
+  Stuck: "blocked",
+  Ready: "ready",
+  Backlog: "backlog",
+  Done: "done",
+}
+
+interface ActivityItemProps {
+  time: string
+  action: string
+  title: string
+  detail: string
+  color: string
+}
+
+function ActivityItem({ time, action, title, detail, color }: ActivityItemProps) {
+  return (
+    <div className="flex gap-3 py-3 border-b border-muted-foreground/30 last:border-0 opacity-30 pointer-events-none select-none">
+      <div className="flex flex-col items-center pt-1">
+        <div className={`size-1.5 rounded-full ${color.replace("text-", "bg-")}`} />
+        <div className="w-px flex-1 bg-muted-foreground/30 mt-1" />
+      </div>
+      <div className="flex-1 min-w-0 space-y-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className={`text-[10px] font-mono uppercase tracking-wider ${color}`}>
+            {action}
+          </span>
+          <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0">
+            {time}
+          </span>
+        </div>
+        <p className="text-[11px] font-medium truncate">{title}</p>
+        <p className="text-[10px] font-mono text-muted-foreground/60">{detail}</p>
+      </div>
+    </div>
+  )
+}
+
+function SidebarToggle() {
+  const { toggleSidebar } = useSidebar()
+  return (
+    <button
+      onClick={toggleSidebar}
+      className="size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors"
+      aria-label="Toggle Sidebar"
+    >
+      <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+        <rect x="0" y="0" width="14" height="2" fill="currentColor" />
+        <rect x="0" y="4" width="10" height="2" fill="currentColor" />
+        <rect x="0" y="8" width="14" height="2" fill="currentColor" />
+      </svg>
+    </button>
+  )
+}
+
+interface DashboardProps {
+  projects: ParsedProject[]
+  defaultSidebarOpen?: boolean
+  defaultProjectIndex?: number | null
+  defaultTab?: string | null
+}
+
+export function Dashboard({ projects, defaultSidebarOpen, defaultProjectIndex, defaultTab }: DashboardProps) {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(
+    defaultProjectIndex !== undefined && defaultProjectIndex !== null && defaultProjectIndex < projects.length
+      ? defaultProjectIndex
+      : projects.length > 0 ? 0 : null
+  )
+  const [selectedTab, setSelectedTab] = useState(
+    defaultTab && TAB_ORDER.includes(defaultTab as Status) ? defaultTab : "In Progress"
+  )
+
+  function handleSelect(index: number) {
+    setSelectedIndex(index)
+    document.cookie = `selected_project=${index}; path=/; max-age=${60 * 60 * 24 * 7}`
+  }
+
+  function handleTabChange(value: string | null) {
+    if (!value) return
+    setSelectedTab(value)
+    document.cookie = `selected_tab=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 7}`
+  }
+
+  const selectedProject =
+    selectedIndex !== null ? projects[selectedIndex] : null
+
+  return (
+    <SidebarProvider defaultOpen={defaultSidebarOpen} className="!h-svh overflow-hidden">
+      <AppSidebar
+        projects={projects}
+        selectedIndex={selectedIndex}
+        onSelect={handleSelect}
+      />
+      <SidebarInset>
+        {selectedProject ? (
+          <Tabs value={selectedTab} onValueChange={handleTabChange} className="!gap-0 flex-1 min-h-0 overflow-hidden">
+            <header className="flex shrink-0 h-16 items-center gap-3 border-b px-4">
+              <SidebarToggle />
+              <Separator orientation="vertical" className="!h-4 !self-auto" />
+              <span className="text-sm font-mono font-medium uppercase tracking-[0.15em]">
+                {selectedProject.name}
+              </span>
+              <Separator orientation="vertical" className="!h-4 !self-auto" />
+              <TabsList variant="line" className="!bg-transparent !p-0 !h-auto">
+                <StatusOverview sections={selectedProject.sections} />
+              </TabsList>
+            </header>
+            <div className="scanlines flex flex-1 min-h-0 overflow-hidden">
+              {/* Cards */}
+              <div className="flex-1 min-w-0 h-full border-r border-border overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-6 flex flex-col min-h-[calc(100%-1px)]">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground mb-4">
+                      tasks
+                    </div>
+                    {TAB_ORDER.map((status) => {
+                      const section = selectedProject.sections.find(
+                        (s) => s.status === status
+                      )
+                      return (
+                        <TabsContent
+                          key={status}
+                          value={status}
+                          className={section && section.items.length > 0 ? "" : "flex-1 flex flex-col"}
+                        >
+                          {section && section.items.length > 0 ? (
+                            <div className="grid gap-3">
+                              {section.items.map((item, index) => (
+                                <TodoCard
+                                  key={`${item.title}-${index}`}
+                                  item={item}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex flex-1 items-center justify-center border border-dashed border-muted-foreground/30">
+                              <div className="text-center space-y-2">
+                                <div className="text-xs font-mono text-primary/60 glow-rose">
+                                  &gt; EMPTY
+                                </div>
+                                <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
+                                  no items in {TAB_LABELS[status]}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </TabsContent>
+                      )
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Activity Feed */}
+              <div className="w-80 shrink-0 h-full overflow-hidden">
+                <ScrollArea className="h-full">
+                <div className="p-6">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground mb-4">
+                    activity feed
+                  </div>
+                  <div className="space-y-0">
+                    <ActivityItem
+                      time="2m ago"
+                      action="moved"
+                      title="Fix authentication timeout"
+                      detail="Ready → In Progress"
+                      color="text-blue-400"
+                    />
+                    <ActivityItem
+                      time="18m ago"
+                      action="added"
+                      title="Add keyboard shortcuts for common actions"
+                      detail="→ Ready"
+                      color="text-green-400"
+                    />
+                    <ActivityItem
+                      time="1h ago"
+                      action="updated"
+                      title="Refactor database connection pooling"
+                      detail="Priority: Medium → High"
+                      color="text-yellow-400"
+                    />
+                    <ActivityItem
+                      time="2h ago"
+                      action="blocked"
+                      title="Migrate user avatars to S3"
+                      detail="Waiting on AWS credentials"
+                      color="text-red-400"
+                    />
+                    <ActivityItem
+                      time="3h ago"
+                      action="added"
+                      title="Build onboarding wizard"
+                      detail="→ Ready"
+                      color="text-green-400"
+                    />
+                    <ActivityItem
+                      time="5h ago"
+                      action="completed"
+                      title="Set up CI/CD pipeline"
+                      detail="In Progress → Done"
+                      color="text-zinc-500"
+                    />
+                    <ActivityItem
+                      time="6h ago"
+                      action="moved"
+                      title="Add email verification flow"
+                      detail="Backlog → Ready"
+                      color="text-green-400"
+                    />
+                    <ActivityItem
+                      time="1d ago"
+                      action="added"
+                      title="Implement CSV export"
+                      detail="→ Ready"
+                      color="text-green-400"
+                    />
+                    <ActivityItem
+                      time="1d ago"
+                      action="updated"
+                      title="Add dark mode toggle"
+                      detail="Description revised"
+                      color="text-yellow-400"
+                    />
+                    <ActivityItem
+                      time="2d ago"
+                      action="moved"
+                      title="Add rate limiting to public API"
+                      detail="Ready → Backlog"
+                      color="text-zinc-500"
+                    />
+                    <ActivityItem
+                      time="2d ago"
+                      action="completed"
+                      title="Fix dropdown z-index bug"
+                      detail="In Progress → Done"
+                      color="text-zinc-500"
+                    />
+                    <ActivityItem
+                      time="3d ago"
+                      action="added"
+                      title="Set up error tracking with Sentry"
+                      detail="→ Ready"
+                      color="text-green-400"
+                    />
+                    <ActivityItem
+                      time="3d ago"
+                      action="blocked"
+                      title="Refactor database connection pooling"
+                      detail="Waiting on staging env access"
+                      color="text-red-400"
+                    />
+                  </div>
+                </div>
+                </ScrollArea>
+              </div>
+            </div>
+          </Tabs>
+        ) : (
+          <>
+            <header className="flex h-16 items-center gap-3 border-b px-4">
+              <SidebarToggle />
+              <Separator orientation="vertical" className="!h-4 !self-auto" />
+              <span className="text-xs font-mono uppercase tracking-[0.15em] text-muted-foreground">
+                no project selected
+              </span>
+            </header>
+            <div className="scanlines flex-1 min-h-0">
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-2">
+                  <div className="text-xs font-mono text-primary glow-rose">
+                    &gt; AWAITING INPUT
+                  </div>
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                    {projects.length === 0
+                      ? "no projects configured // edit ~/.claudedo/config.json"
+                      : "select a project from the sidebar"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </SidebarInset>
+    </SidebarProvider>
+  )
+}
