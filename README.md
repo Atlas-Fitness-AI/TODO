@@ -109,6 +109,27 @@ Then in each project that uses the skill:
 
 This refreshes `TODORULES.md` with the latest template (preserving your customizations) and audits existing items for compatibility.
 
+## Dashboard
+
+ClaudeDo includes a web dashboard for visualizing tasks across all your projects.
+
+```bash
+cd dashboard
+bun install
+bun dev
+```
+
+Open `http://localhost:3000` to see your tasks. The dashboard reads `TODO.md` files directly from disk — no server or database required.
+
+**Features:**
+- Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
+- Switch between status tabs (Active, Blocked, Ready, Backlog, Done)
+- Right-click projects to remove them
+- UI state persists across page reloads (selected project, active tab, sidebar)
+- Sci-fi aesthetic with spotlight card effects
+
+Projects are stored in `~/.claudedo/config.json`. You can add them via the "+" button in the sidebar or edit the file directly.
+
 ## Customization
 
 Edit `TODORULES.md` in your project to:
