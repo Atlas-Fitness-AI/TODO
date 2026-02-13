@@ -136,6 +136,8 @@ The dashboard reads `TODO.md` files directly from disk — no server or database
 - Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
 - Switch between status tabs (Active, Blocked, Ready, Backlog, Done)
 - Activity feed — shows task movements (added, started, completed, blocked) with timestamps, powered by `/todo` skill actions
+- Add new tasks directly from the dashboard with priority, status, category, and description
+- Move tasks between statuses and change priority via right-click context menu on cards
 - Search and filter tasks by priority, category, or keyword
 - Light/Dark/System theme toggle with cookie-based persistence
 - Auto-refresh — dashboard updates within seconds when `TODO.md` changes externally

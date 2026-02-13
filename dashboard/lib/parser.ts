@@ -224,6 +224,117 @@ export function parseDoneMarkdown(content: string): TodoItem[] {
   return items
 }
 
+const FIELD_ORDER = [
+  "priority",
+  "category",
+  "files",
+  "description",
+  "context",
+  "acceptance",
+  "code",
+  "dependencies",
+  "added",
+  "started",
+  "completed",
+  "resolution",
+  "blocked",
+] as const
+
+function serializeItem(item: TodoItem): string {
+  const lines: string[] = [`### ${item.title}`]
+
+  for (const field of FIELD_ORDER) {
+    switch (field) {
+      case "priority":
+        lines.push(`- **Priority**: ${item.priority}`)
+        break
+      case "category":
+        if (item.category.length > 0) lines.push(`- **Category**: ${item.category.join(", ")}`)
+        break
+      case "files":
+        if (item.files && item.files.length > 0)
+          lines.push(`- **Files**: ${item.files.map((f) => `\`${f}\``).join(", ")}`)
+        break
+      case "description":
+        if (item.description) lines.push(`- **Description**: ${item.description}`)
+        break
+      case "context":
+        if (item.context) lines.push(`- **Context**: ${item.context}`)
+        break
+      case "acceptance":
+        if (item.acceptance) lines.push(`- **Acceptance**: ${item.acceptance}`)
+        break
+      case "code":
+        if (item.code) lines.push(`- **Code**: ${item.code}`)
+        break
+      case "dependencies":
+        if (item.dependencies) lines.push(`- **Dependencies**: ${item.dependencies}`)
+        break
+      case "added":
+        if (item.added) lines.push(`- **Added**: ${item.added}`)
+        break
+      case "started":
+        if (item.started) lines.push(`- **Started**: ${item.started}`)
+        break
+      case "completed":
+        if (item.completed) lines.push(`- **Completed**: ${item.completed}`)
+        break
+      case "resolution":
+        if (item.resolution) lines.push(`- **Resolution**: ${item.resolution}`)
+        break
+      case "blocked":
+        if (item.blocked) lines.push(`- **Blocked**: ${item.blocked}`)
+        break
+    }
+  }
+
+  return lines.join("\n")
+}
+
+export function serializeTodoMarkdown(
+  projectName: string,
+  sections: TodoSection[]
+): string {
+  const lines: string[] = [
+    "# TODO",
+    "",
+    `> Project: ${projectName}`,
+    "",
+    "---",
+    "",
+  ]
+
+  const sectionOrder: Status[] = ["In Progress", "Ready", "Stuck", "Backlog", "Done"]
+
+  for (const status of sectionOrder) {
+    lines.push(`## ${status}`)
+    lines.push("")
+
+    const section = sections.find((s) => s.status === status)
+    const items = section?.items ?? []
+
+    for (const item of items) {
+      lines.push(serializeItem(item))
+      lines.push("")
+    }
+
+    lines.push("---")
+    lines.push("")
+  }
+
+  // Remove trailing separator and whitespace
+  while (lines.length > 0 && (lines[lines.length - 1] === "" || lines[lines.length - 1] === "---")) {
+    lines.pop()
+  }
+  lines.push("")
+
+  return lines.join("\n")
+}
+
+export function serializeDoneItem(item: TodoItem): string {
+  return serializeItem(item)
+}
+
 export function getTotalItemCount(sections: TodoSection[]): number {
   return sections.reduce((sum, section) => sum + section.items.length, 0)
 }

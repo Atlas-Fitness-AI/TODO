@@ -6,6 +6,10 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { toast } from "sonner"
@@ -35,9 +39,9 @@ const PRIORITY_CONFIG: Record<
 const STATUS_BORDER_COLOR: Record<Status, string> = {
   "In Progress": "oklch(0.707 0.165 254.624)",
   Stuck: "oklch(0.704 0.191 22.216)",
-  Ready: "oklch(0.723 0.191 149.579)",
+  Ready: "oklch(0.852 0.199 91.936)",
   Backlog: "oklch(0.552 0.016 285.938)",
-  Done: "oklch(0.442 0.017 285.786)",
+  Done: "oklch(0.723 0.191 149.579)",
 }
 
 const HIDDEN_MESSAGES = [
@@ -61,14 +65,75 @@ function getStableMessage(title: string) {
   return HIDDEN_MESSAGES[Math.abs(hash) % HIDDEN_MESSAGES.length]
 }
 
+const ALL_STATUSES: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
+const ALL_PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
+
+const STATUS_LABELS: Record<Status, string> = {
+  "In Progress": "In Progress",
+  Stuck: "Stuck",
+  Ready: "Ready",
+  Backlog: "Backlog",
+  Done: "Done",
+}
+
 interface TodoCardProps {
   item: TodoItem
   status: Status
+  projectPath?: string
+  onMoved?: () => void
 }
 
-export function TodoCard({ item, status }: TodoCardProps) {
+export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) {
   const priority = PRIORITY_CONFIG[item.priority]
   const hiddenMessage = getStableMessage(item.title)
+
+  async function handleMove(newStatus: Status) {
+    if (!projectPath) return
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectPath,
+          title: item.title,
+          newStatus,
+        }),
+      })
+      if (res.ok) {
+        toast.success(`Moved to ${STATUS_LABELS[newStatus]}`)
+        onMoved?.()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Failed to move task")
+      }
+    } catch {
+      toast.error("Failed to move task")
+    }
+  }
+
+  async function handlePriority(newPriority: Priority) {
+    if (!projectPath) return
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectPath,
+          title: item.title,
+          newPriority,
+        }),
+      })
+      if (res.ok) {
+        toast.success(`Priority set to ${newPriority}`)
+        onMoved?.()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Failed to update priority")
+      }
+    } catch {
+      toast.error("Failed to update priority")
+    }
+  }
   return (
     <ContextMenu>
       <ContextMenuTrigger>
@@ -197,6 +262,32 @@ export function TodoCard({ item, status }: TodoCardProps) {
         >
           Copy task name
         </ContextMenuItem>
+        {projectPath && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Move to</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {ALL_STATUSES.filter((s) => s !== status).map((s) => (
+                  <ContextMenuItem key={s} onClick={() => handleMove(s)}>
+                    {STATUS_LABELS[s]}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Set priority</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {ALL_PRIORITIES.filter((p) => p !== item.priority).map((p) => (
+                  <ContextMenuItem key={p} onClick={() => handlePriority(p)}>
+                    <span className={PRIORITY_CONFIG[p].color}>[{PRIORITY_CONFIG[p].label}]</span>
+                    <span className="ml-1">{p}</span>
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   )

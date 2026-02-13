@@ -44,6 +44,7 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 
 **API routes:**
 - `app/api/projects/route.ts` — GET (list projects + activity), PUT (validate path), POST (add), PATCH (rename), DELETE (remove). All operate on `~/.claudedo/config.json`.
+- `app/api/tasks/route.ts` — POST (add task), PATCH (move status or change priority), DELETE (clear activity log). Reads/writes TODO.md via parser + serializer, logs events to `.todo-activity.json`.
 - `app/api/open/route.ts` — POST to open a project path in Finder or Terminal (validates path is a registered project)
 
 **Key patterns:**

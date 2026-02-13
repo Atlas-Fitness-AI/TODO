@@ -5,7 +5,10 @@ import type { ParsedProject } from "./types"
 
 const POLL_INTERVAL = 3000
 
-export function useProjectPolling(initialProjects: ParsedProject[]) {
+export function useProjectPolling(initialProjects: ParsedProject[]): {
+  projects: ParsedProject[]
+  refresh: () => Promise<void>
+} {
   const [projects, setProjects] = useState(initialProjects)
   const prevHash = useRef("")
 
@@ -70,5 +73,18 @@ export function useProjectPolling(initialProjects: ParsedProject[]) {
     return () => clearTimeout(timeoutId)
   }, [computeHash])
 
-  return projects
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/projects")
+      if (res.ok) {
+        const data: ParsedProject[] = await res.json()
+        prevHash.current = computeHash(data)
+        setProjects(data)
+      }
+    } catch {
+      // Silently ignore — will retry on next poll
+    }
+  }, [computeHash])
+
+  return { projects, refresh }
 }

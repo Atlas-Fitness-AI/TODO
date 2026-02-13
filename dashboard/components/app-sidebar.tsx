@@ -21,15 +21,14 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import type { ParsedProject } from "@/lib/types"
@@ -227,77 +226,73 @@ export function AppSidebar({
         </SidebarContent>
       </Sidebar>
 
-      <AlertDialog
+      <Dialog
         open={renameTarget !== null}
         onOpenChange={(open) => {
           if (!open) setRenameTarget(null)
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
-              <span className="text-primary">&gt;</span> Rename Project
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+              <span className="text-primary glow-rose">&gt;</span> Rename Project
+            </DialogTitle>
+            <DialogDescription>
               Enter a new name for <span className="text-foreground font-medium">{renameTarget?.name}</span>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Input
-            value={renameName}
-            onChange={(e) => setRenameName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault()
-                handleConfirmRename()
-              }
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleConfirmRename()
             }}
-            className="font-mono text-[11px]"
-            autoFocus
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase tracking-[0.15em] font-mono text-[10px]">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmRename}
-              disabled={!renameName.trim() || renaming}
-              className="uppercase tracking-[0.15em] font-mono text-[10px]"
-            >
-              {renaming ? "Saving..." : "Rename"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          >
+            <Input
+              value={renameName}
+              onChange={(e) => setRenameName(e.target.value)}
+              className="font-mono text-[11px]"
+              autoFocus
+            />
+            <DialogFooter className="mt-4">
+              <Button
+                type="submit"
+                disabled={!renameName.trim() || renaming}
+                className="uppercase tracking-[0.15em] font-mono text-[10px]"
+              >
+                {renaming ? "Saving..." : "Rename"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      <AlertDialog
+      <Dialog
         open={removeTarget !== null}
         onOpenChange={(open) => {
           if (!open) setRemoveTarget(null)
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
               <span className="text-destructive">&gt;</span> Remove Project
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            </DialogTitle>
+            <DialogDescription>
               Remove <span className="text-foreground font-medium">{removeTarget?.name}</span> from
               the dashboard? This won&apos;t delete any files on disk.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase tracking-[0.15em] font-mono text-[10px]">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
               onClick={handleConfirmRemove}
+              variant="destructive"
               className="uppercase tracking-[0.15em] font-mono text-[10px]"
             >
               Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

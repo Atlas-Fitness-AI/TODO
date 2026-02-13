@@ -9,11 +9,21 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { AppSidebar } from "./app-sidebar"
 import { StatusOverview } from "./status-overview"
 import { TodoCard } from "./todo-card"
 import { ThemeToggle } from "./theme-toggle"
 import { TaskFilters } from "./task-filters"
+import { AddTaskDialog } from "./add-task-dialog"
 import { useProjectPolling } from "@/lib/use-project-polling"
 import { formatRelativeTime } from "@/lib/activity"
 import type { ParsedProject, Priority, Status, TodoItem } from "@/lib/types"
@@ -36,11 +46,20 @@ interface ActivityItemProps {
   color: string
 }
 
+// Static mapping so Tailwind generates these bg classes
+const DOT_BG: Record<string, string> = {
+  "text-green-400": "bg-green-400",
+  "text-blue-400": "bg-blue-400",
+  "text-red-400": "bg-red-400",
+  "text-yellow-400": "bg-yellow-400",
+  "text-purple-400": "bg-purple-400",
+}
+
 function ActivityItem({ time, action, title, detail, color }: ActivityItemProps) {
   return (
     <div className="flex gap-3 py-3 border-b border-muted-foreground/30 last:border-0">
       <div className="flex flex-col items-center pt-1">
-        <div className={`size-1.5 rounded-full ${color.replace("text-", "bg-")}`} />
+        <div className={`size-1.5 rounded-full ${DOT_BG[color] ?? "bg-muted-foreground"}`} />
         <div className="w-px flex-1 bg-muted-foreground/30 mt-1" />
       </div>
       <div className="flex-1 min-w-0 space-y-1">
@@ -85,7 +104,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme }: DashboardProps) {
-  const projects = useProjectPolling(initialProjects)
+  const { projects, refresh } = useProjectPolling(initialProjects)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
     defaultProjectIndex !== undefined && defaultProjectIndex !== null && defaultProjectIndex < initialProjects.length
       ? defaultProjectIndex
@@ -97,6 +116,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
   const [searchQuery, setSearchQuery] = useState("")
   const [priorityFilter, setPriorityFilter] = useState<Set<Priority>>(new Set())
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
+  const [clearDialogOpen, setClearDialogOpen] = useState(false)
 
   function filterItems(items: TodoItem[]): TodoItem[] {
     return items.filter((item) => {
@@ -170,8 +190,13 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
               <div className="flex-1 min-w-0 h-full border-r border-border overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="p-6 flex flex-col min-h-[calc(100%-1px)]">
-                    <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground mb-4">
-                      tasks
+                    <div className="relative mb-4">
+                      <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+                        tasks
+                      </div>
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                        <AddTaskDialog projectPath={selectedProject.path} onAdded={refresh} />
+                      </div>
                     </div>
                     {TAB_ORDER.map((status) => {
                       const section = selectedProject.sections.find(
@@ -192,6 +217,8 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                                   key={`${item.title}-${index}`}
                                   item={item}
                                   status={status}
+                                  projectPath={selectedProject.path}
+                                  onMoved={refresh}
                                 />
                               ))}
                             </div>
@@ -219,13 +246,25 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
               {/* Activity Feed */}
               <div className="w-80 shrink-0 h-full overflow-hidden">
                 <ScrollArea className="h-full">
-                <div className="p-6">
-                  <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground mb-4">
-                    activity feed
+                <div className="p-6 flex flex-col min-h-[calc(100%-1px)]">
+                  <div className="relative mb-4">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+                      activity feed
+                    </div>
+                      <button
+                        className="absolute right-0 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                        aria-label="Clear activity feed"
+                        disabled={activityEvents.length === 0}
+                        onClick={() => setClearDialogOpen(true)}
+                      >
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <rect x="0" y="3" width="8" height="2" fill="currentColor" />
+                        </svg>
+                      </button>
                   </div>
-                  <div className="space-y-0">
-                    {activityEvents.length > 0 ? (
-                      activityEvents.map((event, i) => (
+                  {activityEvents.length > 0 ? (
+                    <div className="space-y-0">
+                      {activityEvents.map((event, i) => (
                         <ActivityItem
                           key={`${event.title}-${event.action}-${i}`}
                           time={formatRelativeTime(event.date)}
@@ -234,20 +273,20 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                           detail={event.detail}
                           color={event.color}
                         />
-                      ))
-                    ) : (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="text-center space-y-2">
-                          <div className="text-xs font-mono text-primary/60 glow-rose">
-                            &gt; NO ACTIVITY
-                          </div>
-                          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
-                            events appear as tasks are added and moved
-                          </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center border border-dashed border-muted-foreground/30">
+                      <div className="text-center space-y-2">
+                        <div className="text-xs font-mono text-primary/60 glow-rose">
+                          &gt; NO ACTIVITY
                         </div>
+                        <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
+                          events appear as tasks are added and moved
+                        </p>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
                 </ScrollArea>
               </div>
@@ -282,6 +321,41 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
           </>
         )}
       </SidebarInset>
+
+      <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+              <span className="text-destructive">&gt;</span> Clear Activity Feed
+            </DialogTitle>
+            <DialogDescription>
+              This will remove all {activityEvents.length} event{activityEvents.length !== 1 ? "s" : ""} from the activity feed. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              className="uppercase tracking-[0.15em] font-mono text-[10px]"
+              onClick={async () => {
+                if (!selectedProject) return
+                try {
+                  const res = await fetch("/api/tasks", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ projectPath: selectedProject.path }),
+                  })
+                  if (res.ok) refresh()
+                } catch {
+                  // silently fail
+                }
+                setClearDialogOpen(false)
+              }}
+            >
+              Clear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   )
 }
