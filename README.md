@@ -39,16 +39,19 @@ If you already have a `TODO.md`, init will migrate it — parsing your existing 
 ## Commands
 
 ```
-/todo               Status overview
-/todo add [desc]    Add a new item (bug, feature, or task)
-/todo done [item]   Mark as completed and archive
-/todo next          Pick the highest-priority ready item
-/todo stuck [item]  Mark as blocked with a reason
-/todo status        Full overview by status
-/todo scan          Find inline TODO/FIXME comments and sync them
-/todo init          Initialize or migrate TODO system
-/todo update        Pull latest templates and audit existing items
-/todo help          Quick reference
+/todo                       Status overview
+/todo add [desc]            Add a new item (bug, feature, or task)
+/todo done [item]           Mark as completed and archive
+/todo move [item] [status]  Move an item to any status directly
+/todo start [item]          Start a task with a full briefing
+/todo next                  Pick the highest-priority ready item
+/todo stuck [item]          Mark as blocked with a reason
+/todo status                Full overview by status
+/todo scan                  Find inline TODO/FIXME comments and sync them
+/todo dashboard             Launch the web dashboard in the browser
+/todo init                  Initialize or migrate TODO system
+/todo update                Pull latest templates and audit existing items
+/todo help                  Quick reference
 ```
 
 ## How It Works
@@ -108,6 +111,41 @@ Then in each project that uses the skill:
 ```
 
 This refreshes `TODORULES.md` with the latest template (preserving your customizations) and audits existing items for compatibility.
+
+## Dashboard
+
+ClaudeDo includes a web dashboard for visualizing tasks across all your projects.
+
+The quickest way to launch it is from Claude Code:
+
+```
+/todo dashboard
+```
+
+This starts the dev server (if not already running), finds a free port, and opens your browser. You can also start it manually:
+
+```bash
+cd dashboard
+bun install
+bun dev
+```
+
+The dashboard reads `TODO.md` files directly from disk — no server or database required.
+
+**Features:**
+- Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
+- Switch between status tabs (Active, Blocked, Ready, Backlog, Done)
+- Activity feed — shows task movements (added, started, completed, blocked) with timestamps, powered by `/todo` skill actions
+- Add new tasks directly from the dashboard with priority, status, category, and description
+- Move tasks between statuses and change priority via right-click context menu on cards
+- Search and filter tasks by priority, category, or keyword
+- Light/Dark/System theme toggle with cookie-based persistence
+- Auto-refresh — dashboard updates within seconds when `TODO.md` changes externally
+- Right-click projects to rename, remove, copy path, open in Finder, or open in Terminal
+- UI state persists across page reloads (selected project, active tab, sidebar, theme)
+- Sci-fi aesthetic with spotlight card effects
+
+Projects are stored in `~/.claudedo/config.json`. You can add them via the "+" button in the sidebar or edit the file directly.
 
 ## Customization
 
