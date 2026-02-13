@@ -381,11 +381,11 @@ export async function PATCH(request: Request) {
   }
 }
 
-// Clear activity log
+// Delete a task or clear activity log
 export async function DELETE(request: Request) {
   try {
     const body = await request.json()
-    const { projectPath } = body as { projectPath: string }
+    const { projectPath, title } = body as { projectPath: string; title?: string }
 
     if (!projectPath) {
       return NextResponse.json(
@@ -401,13 +401,45 @@ export async function DELETE(request: Request) {
       )
     }
 
+    // If title is provided, delete that task; otherwise clear activity log
+    if (title) {
+      const result = await loadAndFindTask(projectPath, title)
+      if ("error" in result) {
+        return NextResponse.json(
+          { error: result.error },
+          { status: result.status }
+        )
+      }
+
+      const { parsed, todoPath, foundSection, foundIndex } = result
+
+      const section = parsed.sections.find((s) => s.status === foundSection)!
+      section.items.splice(foundIndex, 1)
+
+      await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, parsed.sections), "utf-8")
+
+      // Log activity
+      const logPath = join(projectPath, ".todo-activity.json")
+      const existing = await readActivityLog(projectPath)
+      const event: ActivityEvent = {
+        date: new Date().toISOString(),
+        action: "DELETED",
+        title,
+        detail: `Removed from ${foundSection}`,
+        color: "text-red-400",
+      }
+      await writeFile(logPath, JSON.stringify([event, ...existing].slice(0, 50), null, 2), "utf-8")
+
+      return NextResponse.json({ success: true })
+    }
+
     const logPath = join(projectPath, ".todo-activity.json")
     await writeFile(logPath, "[]", "utf-8")
 
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json(
-      { error: "Failed to clear activity log" },
+      { error: "Failed to delete" },
       { status: 500 }
     )
   }
