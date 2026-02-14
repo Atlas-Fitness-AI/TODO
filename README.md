@@ -142,7 +142,10 @@ The dashboard reads `TODO.md` files directly from disk — no server or database
 - Light/Dark/System theme toggle with cookie-based persistence
 - Auto-refresh — dashboard updates within seconds when `TODO.md` changes externally
 - Right-click projects to rename, remove, copy path, open in Finder, or open in Terminal
+- Keyboard shortcuts — `1-5` switch tabs, `j/k` navigate cards, `n` add task, `/` search, `?` help
+- Help modal with Overview, Skill, Dashboard, and Keys reference tabs
 - UI state persists across page reloads (selected project, active tab, sidebar, theme)
+- Backwards compatible with old status names (In Progress, Ready, Stuck, Backlog, Done)
 - Sci-fi aesthetic with spotlight card effects
 
 Projects are stored in `~/.claudedo/config.json`. You can add them via the "+" button in the sidebar or edit the file directly.

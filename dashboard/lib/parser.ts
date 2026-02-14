@@ -10,6 +10,15 @@ const VALID_STATUSES: Status[] = [
 
 const VALID_PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
 
+// Map old status names to new canonical names for backwards compatibility
+const STATUS_ALIASES: Record<string, Status> = {
+  "in progress": "Active",
+  "ready": "Queued",
+  "stuck": "Blocked",
+  "backlog": "Pending",
+  "done": "Resolved",
+}
+
 export function parseTodoMarkdown(content: string): {
   projectName: string
   sections: TodoSection[]
@@ -50,12 +59,14 @@ export function parseTodoMarkdown(content: string): {
       }
 
       const heading = sectionMatch[1].trim()
+      const headingLower = heading.toLowerCase()
       // Match against valid statuses — allow trailing text like "(3 items)"
+      // Also check old status name aliases for backwards compatibility
       const matchedStatus = VALID_STATUSES.find(
         (s) =>
-          s.toLowerCase() === heading.toLowerCase() ||
-          heading.toLowerCase().startsWith(s.toLowerCase())
-      )
+          s.toLowerCase() === headingLower ||
+          headingLower.startsWith(s.toLowerCase())
+      ) ?? STATUS_ALIASES[headingLower] ?? null
 
       if (matchedStatus) {
         currentStatus = matchedStatus

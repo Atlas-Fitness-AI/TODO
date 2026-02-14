@@ -39,7 +39,7 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 **Data flow:**
 - `app/page.tsx` — server component reads cookies + calls `loadAllProjects()` from disk, passes as props
 - `components/dashboard.tsx` — client component, wraps data in `useProjectPolling()` for auto-refresh every 3s
-- `lib/parser.ts` — regex-based parser converts TODO.md/DONE.md markdown into typed `TodoSection[]`/`TodoItem[]`
+- `lib/parser.ts` — regex-based parser converts TODO.md/DONE.md markdown into typed `TodoSection[]`/`TodoItem[]`. Includes `STATUS_ALIASES` mapping old names (In Progress, Ready, Stuck, Backlog, Done) to new canonical names for backwards compatibility with projects that haven't migrated yet.
 - `lib/projects.ts` — reads `~/.claudedo/config.json` for project paths, loads and parses each project's TODO.md + DONE.md
 
 **API routes:**
@@ -53,6 +53,8 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 - All shadcn components use base-ui primitives — `DropdownMenuTrigger` requires a `render` prop (`render={<button />}`), `DropdownMenuLabel` must be inside `DropdownMenuGroup`
 - Tailwind CSS v4 — `@custom-variant dark (&:is(.dark *))` for dark mode, class-based via next-themes
 - Sci-fi aesthetic: monospace font (Geist Mono), no border-radius, uppercase tracking, CardSpotlight with R3F particle effects
+- Keyboard shortcuts via `useEffect` keydown listener in Dashboard: 1-5 (tabs), j/k (card nav), n (add task), / (search), ? (help), Esc (clear focus). Guarded against firing in inputs/textareas/dialogs.
+- Help modal has four tabs (Overview, Skill, Dashboard, Keys) with fixed height and ScrollArea per tab
 
 ### Config & Storage
 

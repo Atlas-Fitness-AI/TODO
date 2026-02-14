@@ -91,9 +91,10 @@ interface TodoCardProps {
   status: Status
   projectPath?: string
   onMoved?: () => void
+  focused?: boolean
 }
 
-export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) {
+export function TodoCard({ item, status, projectPath, onMoved, focused }: TodoCardProps) {
   const priority = PRIORITY_CONFIG[item.priority]
   const hiddenMessage = getStableMessage(item.title)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -169,7 +170,7 @@ export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) 
     <ContextMenu>
       <ContextMenuTrigger>
         <CardSpotlight
-          className="border border-border/50 border-l-2 bg-card/50 !p-4 !rounded-none"
+          className={`border border-l-2 bg-card/50 !p-4 !rounded-none ${focused ? "border-primary/60 ring-1 ring-primary/30" : "border-border/50"}`}
           style={{ borderLeftColor: STATUS_BORDER_COLOR[status] }}
           radius={250}
           color="rgba(255, 100, 50, 0.06)"

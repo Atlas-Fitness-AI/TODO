@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import {
   SidebarProvider,
   SidebarInset,
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import { TodoCard } from "./todo-card"
 import { ThemeToggle } from "./theme-toggle"
 import { TaskFilters } from "./task-filters"
 import { AddTaskDialog } from "./add-task-dialog"
+import { toast } from "sonner"
 import { useProjectPolling } from "@/lib/use-project-polling"
 import { formatRelativeTime } from "@/lib/activity"
 import type { ParsedProject, Priority, Status, TodoItem } from "@/lib/types"
@@ -40,10 +41,12 @@ const TAB_LABELS: Record<Status, string> = {
 
 interface ActivityItemProps {
   time: string
+  date: string
   action: string
   title: string
   detail: string
   color: string
+  onClick?: () => void
 }
 
 // Static mapping so Tailwind generates these bg classes
@@ -55,9 +58,13 @@ const DOT_BG: Record<string, string> = {
   "text-purple-400": "bg-purple-400",
 }
 
-function ActivityItem({ time, action, title, detail, color }: ActivityItemProps) {
+function ActivityItem({ time, action, title, detail, color, onClick }: ActivityItemProps) {
   return (
-    <div className="flex gap-3 py-3 border-b border-muted-foreground/30 last:border-0">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex gap-3 py-3 border-b border-muted-foreground/30 last:border-0 w-full text-left cursor-pointer hover:bg-muted/30 transition-colors"
+    >
       <div className="flex flex-col items-center pt-1">
         <div className={`size-1.5 rounded-full ${DOT_BG[color] ?? "bg-muted-foreground"}`} />
         <div className="w-px flex-1 bg-muted-foreground/30 mt-1" />
@@ -74,7 +81,7 @@ function ActivityItem({ time, action, title, detail, color }: ActivityItemProps)
         <p className="text-[11px] font-medium truncate">{title}</p>
         <p className="text-[10px] font-mono text-muted-foreground/60">{detail}</p>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -117,6 +124,11 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
   const [priorityFilter, setPriorityFilter] = useState<Set<Priority>>(new Set())
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
   const [clearDialogOpen, setClearDialogOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<ActivityItemProps | null>(null)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [addTaskOpen, setAddTaskOpen] = useState(false)
+  const [focusedCardIndex, setFocusedCardIndex] = useState(-1)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   function filterItems(items: TodoItem[]): TodoItem[] {
     return items.filter((item) => {
@@ -137,12 +149,14 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
 
   function handleSelect(index: number) {
     setSelectedIndex(index)
+    setFocusedCardIndex(-1)
     document.cookie = `selected_project=${index}; path=/; max-age=${60 * 60 * 24 * 7}`
   }
 
   function handleTabChange(value: string | null) {
     if (!value) return
     setSelectedTab(value)
+    setFocusedCardIndex(-1)
     document.cookie = `selected_tab=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 7}`
   }
 
@@ -150,6 +164,86 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
     selectedIndex !== null ? projects[selectedIndex] : null
 
   const activityEvents = selectedProject?.activity ?? []
+
+  const currentTabItems = useMemo(() => {
+    if (!selectedProject) return []
+    const section = selectedProject.sections.find((s) => s.status === selectedTab)
+    const items = section?.items ?? []
+    return items.filter((item) => {
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        const matchesTitle = item.title.toLowerCase().includes(q)
+        const matchesDesc = item.description?.toLowerCase().includes(q)
+        const matchesCat = item.category.some((c) => c.toLowerCase().includes(q))
+        if (!matchesTitle && !matchesDesc && !matchesCat) return false
+      }
+      if (priorityFilter.size > 0 && !priorityFilter.has(item.priority)) return false
+      if (categoryFilter.size > 0 && !item.category.some((c) => categoryFilter.has(c))) return false
+      return true
+    })
+  }, [selectedProject, selectedTab, searchQuery, priorityFilter, categoryFilter])
+
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      const tag = target.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return
+      // Skip when any dialog is open
+      if (helpOpen || clearDialogOpen || selectedEvent || addTaskOpen) return
+
+      const key = e.key
+
+      // 1-5: switch tabs
+      if (key >= "1" && key <= "5") {
+        const idx = parseInt(key) - 1
+        if (idx < TAB_ORDER.length) {
+          handleTabChange(TAB_ORDER[idx])
+        }
+        return
+      }
+
+      // j/k: navigate cards
+      if (key === "j") {
+        setFocusedCardIndex((prev) => Math.min(prev + 1, currentTabItems.length - 1))
+        return
+      }
+      if (key === "k") {
+        setFocusedCardIndex((prev) => Math.max(prev - 1, 0))
+        return
+      }
+
+      // n: open add task dialog
+      if (key === "n" && selectedProject) {
+        e.preventDefault()
+        setAddTaskOpen(true)
+        return
+      }
+
+      // /: focus search
+      if (key === "/") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        return
+      }
+
+      // ?: open help
+      if (key === "?") {
+        setHelpOpen(true)
+        return
+      }
+
+      // Escape: clear focused card
+      if (key === "Escape") {
+        setFocusedCardIndex(-1)
+        return
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [helpOpen, clearDialogOpen, selectedEvent, addTaskOpen, selectedProject, currentTabItems.length])
 
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen} className="!h-svh overflow-hidden">
@@ -180,7 +274,16 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                   onPriorityChange={setPriorityFilter}
                   categoryFilter={categoryFilter}
                   onCategoryChange={setCategoryFilter}
+                  searchInputRef={searchInputRef}
                 />
+                <Separator orientation="vertical" className="!h-4 !self-auto" />
+                <button
+                  onClick={() => setHelpOpen(true)}
+                  className="size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors font-mono text-xs"
+                  aria-label="Help"
+                >
+                  ?
+                </button>
                 <Separator orientation="vertical" className="!h-4 !self-auto" />
                 <ThemeToggle defaultTheme={defaultTheme} />
               </div>
@@ -195,7 +298,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                         tasks
                       </div>
                       <div className="absolute right-0 top-1/2 -translate-y-1/2">
-                        <AddTaskDialog projectPath={selectedProject.path} onAdded={refresh} />
+                        <AddTaskDialog projectPath={selectedProject.path} onAdded={refresh} open={addTaskOpen} onOpenChange={setAddTaskOpen} />
                       </div>
                     </div>
                     {TAB_ORDER.map((status) => {
@@ -213,13 +316,22 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                           {filteredItems.length > 0 ? (
                             <div className="grid gap-3">
                               {filteredItems.map((item, index) => (
-                                <TodoCard
+                                <div
                                   key={`${item.title}-${index}`}
-                                  item={item}
-                                  status={status}
-                                  projectPath={selectedProject.path}
-                                  onMoved={refresh}
-                                />
+                                  ref={(el) => {
+                                    if (focusedCardIndex === index && status === selectedTab && el) {
+                                      el.scrollIntoView({ block: "nearest", behavior: "smooth" })
+                                    }
+                                  }}
+                                >
+                                  <TodoCard
+                                    item={item}
+                                    status={status}
+                                    projectPath={selectedProject.path}
+                                    onMoved={refresh}
+                                    focused={focusedCardIndex === index && status === selectedTab}
+                                  />
+                                </div>
                               ))}
                             </div>
                           ) : (
@@ -264,16 +376,23 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                   </div>
                   {activityEvents.length > 0 ? (
                     <div className="space-y-0">
-                      {activityEvents.map((event, i) => (
-                        <ActivityItem
-                          key={`${event.title}-${event.action}-${i}`}
-                          time={formatRelativeTime(event.date)}
-                          action={event.action}
-                          title={event.title}
-                          detail={event.detail}
-                          color={event.color}
-                        />
-                      ))}
+                      {activityEvents.map((event, i) => {
+                        const props: ActivityItemProps = {
+                          time: formatRelativeTime(event.date),
+                          date: event.date,
+                          action: event.action,
+                          title: event.title,
+                          detail: event.detail,
+                          color: event.color,
+                        }
+                        return (
+                          <ActivityItem
+                            key={`${event.title}-${event.action}-${i}`}
+                            {...props}
+                            onClick={() => setSelectedEvent(props)}
+                          />
+                        )
+                      })}
                     </div>
                   ) : (
                     <div className="flex flex-1 items-center justify-center border border-dashed border-muted-foreground/30">
@@ -354,6 +473,348 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
               Clear
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={selectedEvent !== null} onOpenChange={(open) => { if (!open) setSelectedEvent(null) }}>
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
+          {selectedEvent && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+                  <span className={selectedEvent.color}>&gt;</span> Event Detail
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  Activity event details
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className={`size-2 rounded-full ${DOT_BG[selectedEvent.color] ?? "bg-muted-foreground"}`} />
+                  <span className={`text-xs font-mono uppercase tracking-[0.15em] ${selectedEvent.color}`}>
+                    {selectedEvent.action}
+                  </span>
+                </div>
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">
+                    task
+                  </div>
+                  <p className="text-sm font-mono font-medium">{selectedEvent.title}</p>
+                </div>
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">
+                    detail
+                  </div>
+                  <p className="text-xs font-mono text-muted-foreground">{selectedEvent.detail}</p>
+                </div>
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">
+                    timestamp
+                  </div>
+                  <p className="text-xs font-mono text-muted-foreground">
+                    {new Date(selectedEvent.date).toLocaleString(undefined, {
+                      weekday: "short",
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </p>
+                  <p className="text-[10px] font-mono text-muted-foreground/40 mt-0.5">{selectedEvent.time}</p>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+              <span className="text-primary glow-rose">&gt;</span> ClaudeDo
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Help and reference for the ClaudeDo dashboard
+            </DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="overview" className="!gap-0 flex flex-col overflow-hidden h-[460px]">
+            <TabsList variant="line" className="!bg-transparent !p-0 !h-auto !rounded-none border-b border-border/50 pb-2 mb-4 w-full">
+              {["overview", "skill", "dashboard", "keys"].map((tab) => (
+                <TabsTrigger
+                  key={tab}
+                  value={tab}
+                  className="!bg-transparent !border-transparent !p-0 !h-auto !rounded-none after:!bg-muted-foreground text-[10px] font-mono uppercase tracking-[0.15em] cursor-pointer flex-1 text-center"
+                >
+                  {tab}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value="overview" className="text-xs font-mono min-h-0 overflow-hidden [&[hidden]]:!hidden">
+              <ScrollArea className="h-full pr-3">
+              <div className="space-y-5">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    what is claudedo
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    A structured TODO system for <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:text-primary underline underline-offset-2">Claude Code</a> that turns Claude into a project task manager. Every task gets documented with enforced standards — priority, category, file references, context, and acceptance criteria.
+                  </p>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-2">
+                    statuses
+                  </div>
+                  <div className="grid gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="size-1.5 rounded-full bg-blue-400" />
+                      <span className="text-blue-400 w-20">ACTIVE</span>
+                      <span className="text-muted-foreground/60 flex-1 text-right">Being worked on</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="size-1.5 rounded-full bg-red-400" />
+                      <span className="text-red-400 w-20">BLOCKED</span>
+                      <span className="text-muted-foreground/60 flex-1 text-right">Waiting on something</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="size-1.5 rounded-full bg-yellow-400" />
+                      <span className="text-yellow-400 w-20">QUEUED</span>
+                      <span className="text-muted-foreground/60 flex-1 text-right">Ready to pick up</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="size-1.5 rounded-full bg-zinc-500" />
+                      <span className="text-zinc-500 w-20">PENDING</span>
+                      <span className="text-muted-foreground/60 flex-1 text-right">Not yet fully defined</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="size-1.5 rounded-full bg-green-400" />
+                      <span className="text-green-400 w-20">RESOLVED</span>
+                      <span className="text-muted-foreground/60 flex-1 text-right">Completed and archived</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-2">
+                    status flow
+                  </div>
+                  <pre className="text-xs text-muted-foreground leading-relaxed">{`Pending → Queued → Active → Resolved
+              ↕        ↕
+           Blocked ←───┘
+              │
+              └──→ Queued`}</pre>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    storage
+                  </div>
+                  <ul className="space-y-1 text-muted-foreground leading-relaxed">
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Tasks live in each project&apos;s <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODO.md</code></li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Completed items archive to <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">DONE.md</code></li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Rules and categories in <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODORULES.md</code></li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Project list in <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">~/.claudedo/config.json</code></li>
+                  </ul>
+                </div>
+              </div>
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="skill" className="text-xs font-mono min-h-0 overflow-hidden [&[hidden]]:!hidden">
+              <ScrollArea className="h-full pr-3">
+              <div className="space-y-5">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    getting started
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Run <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">/todo init</code> in any project to create <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODO.md</code>, <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODORULES.md</code>, and a <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">CLAUDE.md</code> section. If a TODO.md already exists, init migrates it to the structured format.
+                  </p>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-2">
+                    commands
+                  </div>
+                  <div className="grid gap-2 text-muted-foreground">
+                    {[
+                      ["/todo", "Status overview"],
+                      ["/todo add [desc]", "Add a new item"],
+                      ["/todo done [item]", "Mark completed and archive"],
+                      ["/todo move [item] [status]", "Move to any status"],
+                      ["/todo start [item]", "Start with full briefing"],
+                      ["/todo next", "Pick highest-priority queued item"],
+                      ["/todo stuck [item]", "Mark as blocked"],
+                      ["/todo scan", "Find inline TODO/FIXME comments"],
+                      ["/todo dashboard", "Launch this dashboard"],
+                      ["/todo update", "Refresh templates"],
+                    ].map(([cmd, desc]) => (
+                      <div key={cmd} className="flex gap-2">
+                        <code
+                          className="text-primary/80 shrink-0 w-[200px] cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => {
+                            navigator.clipboard.writeText(cmd)
+                            toast.success(`Copied ${cmd}`)
+                          }}
+                        >{cmd}</code>
+                        <span className="text-muted-foreground/60 flex-1 text-right">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    documentation standards
+                  </div>
+                  <ul className="space-y-1 text-muted-foreground leading-relaxed">
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-red-400">Bugs</span> require file references and root cause context</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-blue-400">Features</span> require acceptance criteria</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-yellow-400">Tasks</span> require a description of what and why</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> All items get priority, category, and imperative-mood titles</li>
+                  </ul>
+                </div>
+              </div>
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="dashboard" className="text-xs font-mono min-h-0 overflow-hidden [&[hidden]]:!hidden">
+              <ScrollArea className="h-full pr-3">
+              <div className="space-y-5">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    adding tasks
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Use the <span className="text-primary">+</span> button to add tasks directly. For enforced documentation standards (file refs, acceptance criteria), use <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">/todo add</code> in Claude Code instead.
+                  </p>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    task cards
+                  </div>
+                  <ul className="space-y-1 text-muted-foreground leading-relaxed">
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Right-click to move between statuses, change priority, or delete</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Left border color indicates the current status</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Hover cards for a hidden message</li>
+                  </ul>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    sidebar
+                  </div>
+                  <ul className="space-y-1 text-muted-foreground leading-relaxed">
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Add projects with the <span className="text-primary">+</span> button — enter any path with a TODO.md</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Right-click projects to rename, remove, copy path, or open in Finder/Terminal</li>
+                  </ul>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    activity feed
+                  </div>
+                  <ul className="space-y-1 text-muted-foreground leading-relaxed">
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Shows task movements from both the skill and dashboard actions</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Click any event to see full details</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Clear with the <span className="text-muted-foreground">&#x2014;</span> button (irreversible)</li>
+                  </ul>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    other
+                  </div>
+                  <ul className="space-y-1 text-muted-foreground leading-relaxed">
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Auto-refreshes every 3s when TODO.md changes externally</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Search and filter tasks by keyword, priority, or category</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Theme, tab, sidebar, and project selection persist across reloads</li>
+                  </ul>
+                </div>
+              </div>
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="keys" className="text-xs font-mono min-h-0 overflow-hidden [&[hidden]]:!hidden">
+              <ScrollArea className="h-full pr-3">
+              <div className="space-y-5">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    navigation
+                  </div>
+                  <div className="grid gap-2 text-muted-foreground">
+                    {[
+                      ["1 – 5", "Switch between status tabs"],
+                      ["J", "Next card"],
+                      ["K", "Previous card"],
+                      ["Esc", "Clear card focus"],
+                    ].map(([key, desc]) => (
+                      <div key={key} className="flex gap-2 items-center">
+                        <kbd className="shrink-0 min-w-[48px] text-center text-[10px] px-1.5 py-0.5 border border-border bg-muted/50 text-primary/80">{key}</kbd>
+                        <span className="text-muted-foreground/60 flex-1 text-right">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    actions
+                  </div>
+                  <div className="grid gap-2 text-muted-foreground">
+                    {[
+                      ["N", "Open add task dialog"],
+                      ["/", "Focus search input"],
+                      ["?", "Open this help modal"],
+                    ].map(([key, desc]) => (
+                      <div key={key} className="flex gap-2 items-center">
+                        <kbd className="shrink-0 min-w-[48px] text-center text-[10px] px-1.5 py-0.5 border border-border bg-muted/50 text-primary/80">{key}</kbd>
+                        <span className="text-muted-foreground/60 flex-1 text-right">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator className="!bg-border/50" />
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
+                    notes
+                  </div>
+                  <ul className="space-y-1 text-muted-foreground leading-relaxed">
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Shortcuts are disabled while typing in inputs or when a dialog is open</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Right-click a focused card to access the context menu</li>
+                  </ul>
+                </div>
+              </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </SidebarProvider>

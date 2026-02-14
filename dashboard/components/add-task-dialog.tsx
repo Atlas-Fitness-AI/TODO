@@ -34,10 +34,14 @@ const STATUSES: { value: Status; label: string }[] = [
 interface AddTaskDialogProps {
   projectPath: string
   onAdded: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function AddTaskDialog({ projectPath, onAdded }: AddTaskDialogProps) {
-  const [open, setOpen] = useState(false)
+export function AddTaskDialog({ projectPath, onAdded, open: controlledOpen, onOpenChange }: AddTaskDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
   const [title, setTitle] = useState("")
   const [priority, setPriority] = useState<Priority>("Medium")
   const [category, setCategory] = useState("")
