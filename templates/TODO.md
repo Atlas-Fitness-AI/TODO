@@ -4,24 +4,24 @@
 
 ---
 
-## In Progress
+## Active
 
 <!-- Items actively being worked on. -->
 
 ---
 
-## Ready
+## Queued
 
 <!-- Well-defined items ready to pick up. Ordered by priority. -->
 
 ---
 
-## Stuck
+## Blocked
 
 <!-- Blocked items. Each must have a Blocked reason. -->
 
 ---
 
-## Backlog
+## Pending
 
 <!-- Identified items not yet fully defined. -->

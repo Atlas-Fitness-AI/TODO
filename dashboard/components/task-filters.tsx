@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, type Ref } from "react"
 import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ interface TaskFiltersProps {
   onPriorityChange: (priorities: Set<Priority>) => void
   categoryFilter: Set<string>
   onCategoryChange: (categories: Set<string>) => void
+  searchInputRef?: Ref<HTMLInputElement | null>
 }
 
 export function TaskFilters({
@@ -33,6 +34,7 @@ export function TaskFilters({
   onPriorityChange,
   categoryFilter,
   onCategoryChange,
+  searchInputRef,
 }: TaskFiltersProps) {
   const allCategories = useMemo(() => {
     const cats = new Set<string>()
@@ -71,6 +73,7 @@ export function TaskFilters({
   return (
     <div className="flex items-center gap-2">
       <Input
+        ref={searchInputRef}
         placeholder="Search..."
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}

@@ -125,8 +125,8 @@
   }
 }
 
-/* Scanline overlay */
-.scanlines::after {
+/* Scanline overlay — dark mode only */
+.dark .scanlines::after {
   content: "";
   position: fixed;
   inset: 0;

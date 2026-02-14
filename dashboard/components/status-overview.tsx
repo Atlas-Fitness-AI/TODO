@@ -5,27 +5,27 @@ const STATUS_CONFIG: Record<
   Status,
   { label: string; color: string; dotColor: string }
 > = {
-  "In Progress": {
+  Active: {
     label: "ACTIVE",
     color: "text-blue-400",
     dotColor: "bg-blue-400",
   },
-  Stuck: {
+  Blocked: {
     label: "BLOCKED",
     color: "text-red-400",
     dotColor: "bg-red-400",
   },
-  Ready: {
+  Queued: {
     label: "QUEUED",
     color: "text-yellow-400",
     dotColor: "bg-yellow-400",
   },
-  Backlog: {
+  Pending: {
     label: "PENDING",
     color: "text-zinc-500",
     dotColor: "bg-zinc-500",
   },
-  Done: {
+  Resolved: {
     label: "RESOLVED",
     color: "text-green-400",
     dotColor: "bg-green-400",
@@ -41,7 +41,7 @@ export function StatusOverview({ sections }: StatusOverviewProps) {
     <div className="flex flex-wrap gap-4">
       {sections.map((section) => {
         const config = STATUS_CONFIG[section.status]
-        const isActive = section.status === "In Progress"
+        const isActive = section.status === "Active"
         return (
           <TabsTrigger
             key={section.status}

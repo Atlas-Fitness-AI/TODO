@@ -42,9 +42,10 @@ If you already have a `TODO.md`, init will migrate it — parsing your existing 
 /todo                       Status overview
 /todo add [desc]            Add a new item (bug, feature, or task)
 /todo done [item]           Mark as completed and archive
+/todo done step [text]      Mark a step as complete on the active task
 /todo move [item] [status]  Move an item to any status directly
-/todo start [item]          Start a task with a full briefing
-/todo next                  Pick the highest-priority ready item
+/todo start [item]          Start a task with a full briefing (auto-completes steps)
+/todo next                  Pick the highest-priority queued item
 /todo stuck [item]          Mark as blocked with a reason
 /todo status                Full overview by status
 /todo scan                  Find inline TODO/FIXME comments and sync them
@@ -67,26 +68,35 @@ Every item gets a structured format based on its type:
 - **Files**: `src/auth/session.ts:42`, `src/middleware/refresh.ts:18`
 - **Description**: Session refresh silently fails after 30 minutes, logging users out.
 - **Context**: The refresh token check compares expiry against server time but the token uses UTC while the server uses local time.
+- **Dependencies**: Migrate session store to Redis
+- **Steps**:
+  - [x] Fix timezone comparison
+  - [ ] Add refresh token rotation
+  - [ ] Write integration tests
 - **Added**: 2026-02-12
 ```
 
-Bugs require file references and context. Features require acceptance criteria. Tasks require a description of what and why.
+Bugs require file references and context. Features require acceptance criteria. Tasks require a description of what and why. Any item can optionally declare dependencies on other tasks — the skill checks these before starting work and warns about unresolved ones.
+
+### Steps
+
+Tasks can have sub-tasks tracked as a checklist. The skill auto-generates steps for complex tasks during `/todo add` and auto-completes them as it works during `/todo start` — updating TODO.md and the activity feed as each step finishes. When all steps are done, the skill suggests resolving the parent task. You can also manually mark steps with `/todo done step [text]`.
 
 ### Status Flow
 
 ```
-Backlog --> Ready --> In Progress --> Done
-                 |         |
-                 +- Stuck <+
+Pending --> Queued --> Active --> Resolved
+                 |        |
+                 +- Blocked <+
                  |
-                 +--> Ready (when unblocked)
+                 +--> Queued (when unblocked)
 ```
 
-- **Backlog** — identified but not fully defined
-- **Ready** — all required fields present, can be picked up
-- **In Progress** — actively being worked on
-- **Stuck** — blocked, must have a reason
-- **Done** — completed and archived
+- **Pending** — identified but not fully defined
+- **Queued** — all required fields present, can be picked up
+- **Active** — actively being worked on
+- **Blocked** — blocked, must have a reason
+- **Resolved** — completed and archived
 
 ### Archiving
 
@@ -134,15 +144,20 @@ The dashboard reads `TODO.md` files directly from disk — no server or database
 
 **Features:**
 - Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
-- Switch between status tabs (Active, Blocked, Ready, Backlog, Done)
+- Switch between status tabs (Active, Blocked, Queued, Pending, Resolved)
 - Activity feed — shows task movements (added, started, completed, blocked) with timestamps, powered by `/todo` skill actions
-- Add new tasks directly from the dashboard with priority, status, category, and description
+- Add new tasks directly from the dashboard with priority, status, category, description, dependencies, and steps
+- Task steps render as a progress bar with expandable mini cards — click to toggle completion
+- Clear all tasks in a status group with the "—" button next to "+"
 - Move tasks between statuses and change priority via right-click context menu on cards
 - Search and filter tasks by priority, category, or keyword
 - Light/Dark/System theme toggle with cookie-based persistence
 - Auto-refresh — dashboard updates within seconds when `TODO.md` changes externally
 - Right-click projects to rename, remove, copy path, open in Finder, or open in Terminal
+- Keyboard shortcuts — `1-5` switch tabs, `j/k` navigate cards, `n` add task, `/` search, `?` help
+- Help modal with Overview, Skill, Dashboard, and Keys reference tabs
 - UI state persists across page reloads (selected project, active tab, sidebar, theme)
+- Backwards compatible with old status names (In Progress, Ready, Stuck, Backlog, Done)
 - Sci-fi aesthetic with spotlight card effects
 
 Projects are stored in `~/.claudedo/config.json`. You can add them via the "+" button in the sidebar or edit the file directly.

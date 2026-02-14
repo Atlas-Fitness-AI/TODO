@@ -20,9 +20,10 @@ export function useProjectPolling(initialProjects: ParsedProject[]): {
         path: p.path,
         sections: p.sections.map((s) => ({
           status: s.status,
-          items: s.items.map((i) => i.title + i.status + i.priority),
+          items: s.items.map((i) => i.title + i.status + i.priority + (i.steps?.map((s) => s.completed ? "1" : "0").join("") ?? "")),
         })),
         activityCount: p.activity?.length ?? 0,
+        latestActivity: p.activity?.[0]?.date ?? "",
       }))
     )
   }, [])

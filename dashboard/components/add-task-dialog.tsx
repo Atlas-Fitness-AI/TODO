@@ -22,27 +22,34 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import type { Priority, Status } from "@/lib/types"
+import type { Priority, Status, TodoItem } from "@/lib/types"
 
 const PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
 const STATUSES: { value: Status; label: string }[] = [
-  { value: "Ready", label: "Ready" },
-  { value: "In Progress", label: "In Progress" },
-  { value: "Backlog", label: "Backlog" },
+  { value: "Queued", label: "Queued" },
+  { value: "Active", label: "Active" },
+  { value: "Pending", label: "Pending" },
 ]
 
 interface AddTaskDialogProps {
   projectPath: string
+  existingTasks?: TodoItem[]
   onAdded: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function AddTaskDialog({ projectPath, onAdded }: AddTaskDialogProps) {
-  const [open, setOpen] = useState(false)
+export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: controlledOpen, onOpenChange }: AddTaskDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
   const [title, setTitle] = useState("")
   const [priority, setPriority] = useState<Priority>("Medium")
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
-  const [status, setStatus] = useState<Status>("Ready")
+  const [status, setStatus] = useState<Status>("Queued")
+  const [selectedDeps, setSelectedDeps] = useState<Set<string>>(new Set())
+  const [stepsText, setStepsText] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,7 +58,9 @@ export function AddTaskDialog({ projectPath, onAdded }: AddTaskDialogProps) {
     setPriority("Medium")
     setCategory("")
     setDescription("")
-    setStatus("Ready")
+    setStatus("Queued")
+    setSelectedDeps(new Set())
+    setStepsText("")
     setSubmitting(false)
     setError(null)
   }
@@ -76,6 +85,14 @@ export function AddTaskDialog({ projectPath, onAdded }: AddTaskDialogProps) {
             .filter(Boolean),
           description: description.trim() || undefined,
           status,
+          ...(selectedDeps.size > 0 && { dependencies: Array.from(selectedDeps).join(", ") }),
+          ...(stepsText.trim() && {
+            steps: stepsText
+              .split("\n")
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((title) => ({ title, completed: false })),
+          }),
         }),
       })
 
@@ -225,6 +242,80 @@ export function AddTaskDialog({ projectPath, onAdded }: AddTaskDialogProps) {
               placeholder="What needs to happen..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="font-mono text-[11px] min-h-[60px]"
+            />
+          </div>
+          {existingTasks.length > 0 && (
+            <div className="grid gap-1.5">
+              <Label
+                className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
+              >
+                Dependencies{" "}
+                <span className="normal-case tracking-normal text-muted-foreground/50">
+                  (optional)
+                </span>
+              </Label>
+              <div className="border border-border/50 max-h-[120px] overflow-y-auto">
+                {existingTasks.map((task) => (
+                  <button
+                    key={task.title}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDeps((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(task.title)) next.delete(task.title)
+                        else next.add(task.title)
+                        return next
+                      })
+                    }}
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-muted/50 ${
+                      selectedDeps.has(task.title)
+                        ? "bg-primary/5 text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <span
+                      className={`size-3 shrink-0 border flex items-center justify-center ${
+                        selectedDeps.has(task.title)
+                          ? "border-primary bg-primary"
+                          : "border-border"
+                      }`}
+                    >
+                      {selectedDeps.has(task.title) && (
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <path d="M1.5 4L3 5.5L6.5 2" stroke="currentColor" strokeWidth="1.5" className="text-primary-foreground" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className="text-[11px] font-mono truncate">{task.title}</span>
+                    <span className={`text-[9px] font-mono uppercase tracking-wider shrink-0 ml-auto ${
+                      task.status === "Active" ? "text-blue-400" :
+                      task.status === "Blocked" ? "text-red-400" :
+                      task.status === "Queued" ? "text-yellow-400" :
+                      "text-zinc-500"
+                    }`}>
+                      {task.status}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="grid gap-1.5">
+            <Label
+              htmlFor="task-steps"
+              className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
+            >
+              Steps{" "}
+              <span className="normal-case tracking-normal text-muted-foreground/50">
+                (optional, one per line)
+              </span>
+            </Label>
+            <Textarea
+              id="task-steps"
+              placeholder={"Design schema\nImplement API\nWrite tests"}
+              value={stepsText}
+              onChange={(e) => setStepsText(e.target.value)}
               className="font-mono text-[11px] min-h-[60px]"
             />
           </div>

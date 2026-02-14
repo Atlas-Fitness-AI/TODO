@@ -47,7 +47,7 @@ export async function loadProject(
         const doneContent = await readFile(donePath, "utf-8")
         const archivedItems = parseDoneMarkdown(doneContent)
 
-        const doneSection = parsed.sections.find((s) => s.status === "Done")
+        const doneSection = parsed.sections.find((s) => s.status === "Resolved")
         if (doneSection) {
           doneSection.items.push(...archivedItems)
         }

@@ -30,7 +30,7 @@ Check for existing files before doing anything:
 4. For each extracted item, map it to the structured format:
    - Infer priority from keywords (e.g. "critical", "high priority", "low"), existing priority labels, or position/context. Default to `Medium` if unclear.
    - Infer category from content (mentions of UI, database, API, etc.). Ask the user if ambiguous.
-   - Infer status from markers like `[x]` (Done), "Status: Fixed" (Done), "in progress" (In Progress), "blocked" (Stuck). Default to `Ready` for unmarked items.
+   - Infer status from markers like `[x]` (Resolved), "Status: Fixed" (Resolved), "in progress" (Active), "blocked" (Blocked). Default to `Queued` for unmarked items.
    - Preserve all existing detail — file references, descriptions, context, solutions — mapping them to the correct fields.
 5. Write the new structured TODO.md with all migrated items in their proper status sections.
 6. Show the user a summary of what was migrated: count by status, any items that need manual review (ambiguous priority/category).
@@ -117,8 +117,24 @@ Gather information and enforce documentation standards:
    - Category: From the project's category list in TODORULES.md
    - Description: 1-3 sentences, actionable
 4. Add conditional fields based on type (see above).
-5. Default status: **Ready** (or **Backlog** if missing required info).
-6. Insert the item into the correct status section in TODO.md, ordered by priority within the section (Critical first).
+5. **Check for dependencies:**
+   - Look at existing items in Queued, Active, Blocked, and Pending sections of TODO.md.
+   - If there are existing items, list them as numbered options and ask: "Does this depend on any existing tasks?"
+   - If the user selects one or more, add `- **Dependencies**: [title1], [title2]` to the item (comma-separated titles).
+   - If the user says no or there are no existing items, omit the Dependencies field entirely (don't add an empty field).
+6. **Steps/milestones:**
+   - Assess whether the task warrants steps based on complexity: multiple files, multi-part description, refactors, features with several acceptance criteria, or tasks the user described with sequential phases.
+   - **If the task is complex enough**: propose steps yourself. Present them as a numbered list and ask the user to confirm, edit, or skip. Example: "I'd suggest these steps: 1. Extract schema validation, 2. Extract query builders, 3. Add unit tests — look right?"
+   - **If the task is simple** (single-file fix, quick tweak, one clear action): skip steps entirely, don't ask.
+   - **If ambiguous**: ask "Does this task have steps or milestones?" and let the user decide.
+   - If steps are confirmed, write as multi-line checklist under `- **Steps**:`:
+     ```
+     - **Steps**:
+       - [ ] Step one
+       - [ ] Step two
+     ```
+7. Default status: **Queued** (or **Pending** if missing required info).
+8. Insert the item into the correct status section in TODO.md, ordered by priority within the section (Critical first).
 
 Item format:
 ```markdown
@@ -129,20 +145,33 @@ Item format:
 - **Description**: What needs to happen.
 - **Context**: Root cause or background (bugs).
 - **Acceptance**: How to verify completion (features).
+- **Dependencies**: [other task titles, comma-separated]
+- **Steps**:
+  - [ ] Step one
+  - [ ] Step two
 - **Added**: [today's date]
 ```
 
 Omit fields that don't apply (don't include empty fields).
 
-### `done` - Complete a TODO Item
+### `done` - Complete a TODO Item (or Step)
 
+**Step completion** — If `$ARGUMENTS` matches `step [text]`:
+1. Find the Active task containing a step whose title matches `[text]` (partial match ok, ask if ambiguous).
+2. Toggle that step to `[x]` in TODO.md.
+3. Show updated progress (e.g. "3/5 steps complete").
+4. If all steps are now complete, ask: "All steps complete — mark this task as resolved?"
+5. If yes, continue with the full resolution flow below.
+
+**Task completion** — Otherwise:
 1. Identify the item. If `$ARGUMENTS` after "done" is ambiguous, list matching items and ask.
-2. Ask for a brief resolution note (what was done).
-3. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]` to the item.
-4. Check TODORULES.md archive config:
+2. If the item has steps with incomplete entries, warn: "This task has N incomplete steps. Mark as resolved anyway?" If the user declines, stop.
+3. Ask for a brief resolution note (what was done).
+4. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]` to the item.
+5. Check TODORULES.md archive config:
    - If `archive: true`: Move the item to the archive file (default `DONE.md`). Create the file from template if it doesn't exist.
-   - If `archive: false`: Move the item to the `## Done` section at the bottom of TODO.md.
-5. Check referenced files for related `// TODO:` comments. If found, offer to remove them.
+   - If `archive: false`: Move the item to the `## Resolved` section at the bottom of TODO.md.
+6. Check referenced files for related `// TODO:` comments. If found, offer to remove them.
 
 ### `move` - Move Item to Any Status
 
@@ -150,56 +179,76 @@ Move an item directly to a specific status, handling required fields for the tar
 
 1. Parse `$ARGUMENTS` after "move". Expect a pattern like `move [item] [status]` or `move [item] to [status]`.
    - `[item]` can be a partial title match, item number, or keyword.
-   - `[status]` must be one of: `backlog`, `ready`, `in-progress` (or `active`), `stuck` (or `blocked`), `done`.
+   - `[status]` must be one of: `pending`, `queued`, `active` (or `in-progress`), `blocked` (or `stuck`), `resolved` (or `done`).
    - If either is ambiguous or missing, ask the user.
 2. Identify the item in TODO.md. If multiple items match, list them and ask.
 3. Validate the transition and gather required fields for the target status:
-   - **→ Backlog**: No extra fields required. Remove `Started` date if present.
-   - **→ Ready**: No extra fields required. Remove `Started` date and `Blocked` reason if present.
-   - **→ In Progress**: Add `- **Started**: [today's date]` if not already present. Remove `Blocked` reason if present.
-   - **→ Stuck**: Require a `Blocked` reason — ask the user if not provided. Add `- **Blocked**: [reason]`.
-   - **→ Done**: Require a resolution note — ask the user if not provided. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]`. If archive is enabled, move to the archive file instead of the Done section.
+   - **→ Pending**: No extra fields required. Remove `Started` date if present.
+   - **→ Queued**: No extra fields required. Remove `Started` date and `Blocked` reason if present.
+   - **→ Active**: Add `- **Started**: [today's date]` if not already present. Remove `Blocked` reason if present.
+   - **→ Blocked**: Require a `Blocked` reason — ask the user if not provided. Add `- **Blocked**: [reason]`.
+   - **→ Resolved**: Require a resolution note — ask the user if not provided. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]`. If archive is enabled, move to the archive file instead of the Resolved section.
 4. Remove the item from its current status section.
 5. Insert the item into the target status section, ordered by priority within the section.
 6. Confirm the move: show the item title, old status → new status.
 
 Status aliases (case-insensitive):
-- `backlog` → Backlog
-- `ready`, `queued` → Ready
-- `in-progress`, `active`, `wip` → In Progress
-- `stuck`, `blocked` → Stuck
-- `done`, `complete`, `finished`, `resolve` → Done
+- `pending`, `backlog` → Pending
+- `queued`, `ready` → Queued
+- `active`, `in-progress`, `wip` → Active
+- `blocked`, `stuck` → Blocked
+- `resolved`, `done`, `complete`, `finished` → Resolved
 
 ### `start` - Start Working on a Specific Task
 
 Pick a specific item and begin working on it, with a full briefing.
 
 1. Parse `$ARGUMENTS` after "start". `[item]` can be a partial title match, item number, or keyword.
-   - If ambiguous or missing, list Ready and Backlog items and ask which one.
+   - If ambiguous or missing, list Queued and Pending items and ask which one.
 2. Identify the item in TODO.md. If multiple items match, list them and ask.
-3. Move the item to **In Progress**:
+3. **Check dependencies before proceeding:**
+   - If the item has a `Dependencies` field, look up each dependency title in TODO.md and DONE.md/Resolved section.
+   - If any dependency is NOT resolved (i.e. still in Active, Queued, Blocked, or Pending), warn the user:
+     - List each unresolved dependency with its current status (e.g. "`Setup database` is still **Queued**").
+     - Ask: "This item has unresolved dependencies. Start anyway?"
+   - If all dependencies are resolved (in Resolved section or DONE.md) or the item has no dependencies, proceed normally.
+4. Move the item to **Active**:
    - Add `- **Started**: [today's date]` if not already present.
-   - Remove `Blocked` reason if present (item was previously Stuck).
-   - Remove the item from its current section and insert into **In Progress**, ordered by priority.
-4. Display a **task briefing**:
+   - Remove `Blocked` reason if present (item was previously Blocked).
+   - Remove the item from its current section and insert into **Active**, ordered by priority.
+5. Display a **task briefing**:
    - Show the full item with all fields.
+   - If the item has **Steps**, show step progress: "Steps: 2/5 complete" with a list of each step and its check status (`[x]` or `[ ]`). Suggest starting with the first incomplete step.
    - If the item has **Files** references, read each referenced file and summarize the relevant code around the referenced line numbers.
    - Based on the item's description, acceptance criteria, and context, suggest a concrete starting approach — what to look at first, what the likely implementation steps are, and any potential gotchas.
-5. Confirm: show the item title and the status transition (e.g. Ready → In Progress).
+6. Confirm: show the item title and the status transition (e.g. Queued → Active).
+7. **Auto-complete steps as you work:**
+   - If the task has steps, track your progress against them as you work.
+   - When you finish the work described by a step, immediately:
+     1. Toggle that step to `[x]` in TODO.md.
+     2. Log an activity event: `{ action: "UPDATED", title: "[task title]", detail: "Step completed: [step title]", color: "text-purple-400" }`.
+     3. Briefly confirm to the user: "Marked step done: [step title] (N/M complete)".
+   - Work through steps in order when possible, but if you naturally complete a later step first, mark it off then.
+   - When all steps are complete, tell the user: "All steps complete — ready to mark this task as resolved?"
 
 ### `next` - Pick Next Task
 
-1. Look at items in the **Ready** section only.
+1. Look at items in the **Queued** section only.
 2. Sort by priority: Critical > High > Medium > Low.
-3. Present the highest-priority item with full details.
-4. Ask if the user wants to start working on it.
-5. If yes: Move to **In Progress**, add `- **Started**: [today's date]`.
+3. **Factor in dependencies:**
+   - For each candidate item, check if it has a `Dependencies` field.
+   - If it does, look up each dependency title in TODO.md and DONE.md/Resolved to see if all are resolved.
+   - Prefer items with no dependencies or all-resolved dependencies over items with unresolved dependencies.
+   - If the top-priority item has unresolved dependencies, mention it (e.g. "Highest priority is `[Title]` but it has unresolved dependencies: `[dep]` (Queued)") and offer the next item that has no dependency issues instead.
+4. Present the selected item with full details.
+5. Ask if the user wants to start working on it.
+6. If yes: Move to **Active**, add `- **Started**: [today's date]`.
 
 ### `stuck` - Mark as Blocked
 
-1. Identify the item (should be In Progress). If ambiguous, ask.
+1. Identify the item (should be Active). If ambiguous, ask.
 2. Require a reason: what's blocking progress.
-3. Move to **Stuck** section.
+3. Move to **Blocked** section.
 4. Add `- **Blocked**: [reason]`.
 5. If possible, suggest ways to unblock.
 
@@ -210,21 +259,30 @@ Display a summary:
 ```
 ## TODO Status
 
-**In Progress** (N items)
+**Active** (N items)
 - [Title] - [Priority] - [Category] - started [date]
 
-**Stuck** (N items)
+**Blocked** (N items)
 - [Title] - [Priority] - Blocked: [reason]
 
-**Ready** (N items, showing top 5)
+**Queued** (N items, showing top 5)
 - [Title] - [Priority] - [Category]
 
-**Backlog** (N items)
+**Pending** (N items)
 
-**Done** (N items total)
+**Resolved** (N items total)
 ```
 
-Focus attention on In Progress and Stuck items first.
+For items with steps, append step progress to the line:
+- `- [Title] - [Priority] - [Category] - steps: 2/5`
+
+For items with dependencies, append dependency info to the line:
+- `- [Title] - [Priority] - [Category] - depends on: [dep1] ✓, [dep2] ⧖`
+- `✓` = dependency is resolved, `⧖` = dependency is still open (Active, Queued, Blocked, or Pending)
+- Look up each dependency title in TODO.md and DONE.md/Resolved to determine its status.
+- Only show this suffix for items that have a Dependencies field.
+
+Focus attention on Active and Blocked items first.
 
 ### `dashboard` - Launch Web Dashboard
 
@@ -264,6 +322,7 @@ Display this quick reference:
 /todo                       Show status overview (same as /todo status)
 /todo add [desc]            Add a new TODO item with enforced documentation
 /todo done [item]           Mark an item as completed and archive it
+/todo done step [text]      Mark a step as complete on the active task
 /todo move [item] [status]  Move an item to any status directly
 /todo start [item]          Start working on a specific task (with briefing)
 /todo next                  Pick the highest-priority Ready item to work on
@@ -290,19 +349,20 @@ After every action that modifies TODO.md or DONE.md (`add`, `done`, `move`, `sta
   "date": "2026-02-12T14:30:00.000Z",
   "action": "STARTED",
   "title": "Fix login bug",
-  "detail": "Ready → In Progress",
+  "detail": "Queued → Active",
   "color": "text-blue-400"
 }
 ```
 
 **Action types and colors:**
 - `ADDED` / `text-green-400` — new item added via `add`
-- `STARTED` / `text-blue-400` — item moved to In Progress via `start` or `move`
-- `COMPLETED` / `text-green-400` — item marked done via `done` or `move`
-- `MOVED` / `text-yellow-400` — item moved between other statuses via `move` (e.g. Ready → Backlog)
-- `BLOCKED` / `text-red-400` — item marked stuck via `stuck` or `move`
+- `STARTED` / `text-blue-400` — item moved to Active via `start` or `move`
+- `COMPLETED` / `text-green-400` — item marked resolved via `done` or `move`
+- `MOVED` / `text-yellow-400` — item moved between other statuses via `move` (e.g. Queued → Pending)
+- `BLOCKED` / `text-red-400` — item marked blocked via `stuck` or `move`
+- `UPDATED` / `text-purple-400` — step completed during work via `start` or `done step`
 
-**Detail field:** Show the status transition, e.g. `"Ready → In Progress"`, `"In Progress → Done"`, `"Added to Ready"`.
+**Detail field:** Show the status transition, e.g. `"Queued → Active"`, `"Active → Resolved"`, `"Added to Queued"`.
 
 **How to log:**
 1. Read the existing `.todo-activity.json` from the project root. If it doesn't exist or is invalid, start with an empty array `[]`.

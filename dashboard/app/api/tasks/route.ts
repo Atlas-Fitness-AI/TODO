@@ -5,11 +5,11 @@ import { join } from "path"
 import { homedir } from "os"
 import { parseTodoMarkdown, serializeTodoMarkdown, serializeDoneItem } from "@/lib/parser"
 import { readActivityLog } from "@/lib/activity-log"
-import type { Priority, Status, TodoItem, AppConfig, ActivityEvent } from "@/lib/types"
+import type { Priority, Status, Step, TodoItem, AppConfig, ActivityEvent } from "@/lib/types"
 
 const CONFIG_PATH = join(homedir(), ".claudedo", "config.json")
 
-const VALID_STATUSES: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
+const VALID_STATUSES: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 const VALID_PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
 
 async function isRegisteredProject(projectPath: string): Promise<boolean> {
@@ -30,19 +30,19 @@ function applyStatusFields(item: TodoItem, oldStatus: Status, newStatus: Status)
   const updated = { ...item, status: newStatus }
 
   switch (newStatus) {
-    case "In Progress":
+    case "Active":
       if (!updated.started) updated.started = getToday()
       delete updated.blocked
       break
-    case "Stuck":
+    case "Blocked":
       if (!updated.blocked) updated.blocked = "Moved via dashboard"
       break
-    case "Ready":
-    case "Backlog":
+    case "Queued":
+    case "Pending":
       delete updated.started
       delete updated.blocked
       break
-    case "Done":
+    case "Resolved":
       updated.completed = getToday()
       if (!updated.resolution) updated.resolution = "Completed via dashboard"
       break
@@ -53,11 +53,11 @@ function applyStatusFields(item: TodoItem, oldStatus: Status, newStatus: Status)
 
 function getActivityAction(newStatus: Status): { action: string; color: string } {
   switch (newStatus) {
-    case "In Progress":
+    case "Active":
       return { action: "STARTED", color: "text-blue-400" }
-    case "Done":
+    case "Resolved":
       return { action: "COMPLETED", color: "text-green-400" }
-    case "Stuck":
+    case "Blocked":
       return { action: "BLOCKED", color: "text-red-400" }
     default:
       return { action: "MOVED", color: "text-yellow-400" }
@@ -106,13 +106,15 @@ async function getArchiveConfig(projectPath: string): Promise<{ archive: boolean
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { projectPath, title, priority, category, description, status } = body as {
+    const { projectPath, title, priority, category, description, status, dependencies, steps } = body as {
       projectPath: string
       title: string
       priority: Priority
       category: string[]
       description?: string
       status?: Status
+      dependencies?: string
+      steps?: Step[]
     }
 
     if (!projectPath || !title?.trim()) {
@@ -129,7 +131,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const targetStatus = status || "Ready"
+    const targetStatus = status || "Queued"
     if (!VALID_STATUSES.includes(targetStatus)) {
       return NextResponse.json(
         { error: `Invalid status: ${targetStatus}` },
@@ -163,8 +165,10 @@ export async function POST(request: Request) {
       category: category || [],
       status: targetStatus,
       ...(description?.trim() && { description: description.trim() }),
+      ...(dependencies?.trim() && { dependencies: dependencies.trim() }),
+      ...(steps && steps.length > 0 && { steps }),
       added: getToday(),
-      ...(targetStatus === "In Progress" && { started: getToday() }),
+      ...(targetStatus === "Active" && { started: getToday() }),
     }
 
     const targetSection = parsed.sections.find((s) => s.status === targetStatus)
@@ -233,11 +237,12 @@ async function loadAndFindTask(projectPath: string, title: string) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json()
-    const { projectPath, title, newStatus, newPriority } = body as {
+    const { projectPath, title, newStatus, newPriority, toggleStep } = body as {
       projectPath: string
       title: string
       newStatus?: Status
       newPriority?: Priority
+      toggleStep?: number
     }
 
     if (!projectPath || !title) {
@@ -247,9 +252,9 @@ export async function PATCH(request: Request) {
       )
     }
 
-    if (!newStatus && !newPriority) {
+    if (!newStatus && !newPriority && toggleStep === undefined) {
       return NextResponse.json(
-        { error: "newStatus or newPriority is required" },
+        { error: "newStatus, newPriority, or toggleStep is required" },
         { status: 400 }
       )
     }
@@ -277,6 +282,38 @@ export async function PATCH(request: Request) {
     }
 
     const { parsed, todoPath, foundItem, foundSection, foundIndex } = result
+
+    // Handle step toggle
+    if (toggleStep !== undefined) {
+      if (!foundItem.steps || toggleStep < 0 || toggleStep >= foundItem.steps.length) {
+        return NextResponse.json(
+          { error: "Invalid step index" },
+          { status: 400 }
+        )
+      }
+
+      const section = parsed.sections.find((s) => s.status === foundSection)!
+      const updatedSteps = foundItem.steps.map((step, i) =>
+        i === toggleStep ? { ...step, completed: !step.completed } : step
+      )
+      section.items[foundIndex] = { ...foundItem, steps: updatedSteps }
+
+      await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, parsed.sections), "utf-8")
+
+      const toggledStep = updatedSteps[toggleStep]
+      const logPath = join(projectPath, ".todo-activity.json")
+      const existing = await readActivityLog(projectPath)
+      const event: ActivityEvent = {
+        date: new Date().toISOString(),
+        action: "UPDATED",
+        title,
+        detail: `Step ${toggledStep.completed ? "completed" : "unchecked"}: ${toggledStep.title}`,
+        color: "text-purple-400",
+      }
+      await writeFile(logPath, JSON.stringify([event, ...existing].slice(0, 50), null, 2), "utf-8")
+
+      return NextResponse.json({ success: true })
+    }
 
     // Handle priority change
     if (newPriority && !newStatus) {
@@ -324,12 +361,12 @@ export async function PATCH(request: Request) {
       const updatedItem = applyStatusFields(foundItem, foundSection, newStatus)
 
       // Handle Done with archiving
-      if (newStatus === "Done") {
+      if (newStatus === "Resolved") {
         const archiveConfig = await getArchiveConfig(projectPath)
 
         if (archiveConfig.archive) {
           const filteredSections = parsed.sections.map((s) =>
-            s.status === "Done" ? { ...s, items: s.items.filter((i) => i.title !== title) } : s
+            s.status === "Resolved" ? { ...s, items: s.items.filter((i) => i.title !== title) } : s
           )
           await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, filteredSections), "utf-8")
 
@@ -357,7 +394,7 @@ export async function PATCH(request: Request) {
 
           await writeFile(archivePath, archiveContent, "utf-8")
         } else {
-          const doneSection = parsed.sections.find((s) => s.status === "Done")
+          const doneSection = parsed.sections.find((s) => s.status === "Resolved")
           if (doneSection) doneSection.items.unshift(updatedItem)
           await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, parsed.sections), "utf-8")
         }
@@ -385,7 +422,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json()
-    const { projectPath, title } = body as { projectPath: string; title?: string }
+    const { projectPath, title, clearStatus } = body as { projectPath: string; title?: string; clearStatus?: Status }
 
     if (!projectPath) {
       return NextResponse.json(
@@ -399,6 +436,50 @@ export async function DELETE(request: Request) {
         { error: "Project not registered" },
         { status: 403 }
       )
+    }
+
+    // Clear all tasks in a status group
+    if (clearStatus) {
+      if (!VALID_STATUSES.includes(clearStatus)) {
+        return NextResponse.json(
+          { error: `Invalid status: ${clearStatus}` },
+          { status: 400 }
+        )
+      }
+
+      const todoPath = join(projectPath, "TODO.md")
+      try {
+        await access(todoPath)
+      } catch {
+        return NextResponse.json(
+          { error: "TODO.md not found" },
+          { status: 404 }
+        )
+      }
+
+      const content = await readFile(todoPath, "utf-8")
+      const parsed = parseTodoMarkdown(content)
+
+      const section = parsed.sections.find((s) => s.status === clearStatus)
+      const count = section?.items.length ?? 0
+      if (section) section.items = []
+
+      await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, parsed.sections), "utf-8")
+
+      if (count > 0) {
+        const logPath = join(projectPath, ".todo-activity.json")
+        const existing = await readActivityLog(projectPath)
+        const event: ActivityEvent = {
+          date: new Date().toISOString(),
+          action: "DELETED",
+          title: `${count} task${count !== 1 ? "s" : ""}`,
+          detail: `Cleared ${clearStatus}`,
+          color: "text-red-400",
+        }
+        await writeFile(logPath, JSON.stringify([event, ...existing].slice(0, 50), null, 2), "utf-8")
+      }
+
+      return NextResponse.json({ success: true })
     }
 
     // If title is provided, delete that task; otherwise clear activity log

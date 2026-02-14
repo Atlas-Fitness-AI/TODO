@@ -164,7 +164,10 @@ export function AddProjectDialog() {
               htmlFor="project-path"
               className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
             >
-              Path
+              Path{" "}
+              <span className="normal-case tracking-normal text-muted-foreground/50">
+                (run <code className="text-muted-foreground">pwd</code> in terminal to copy)
+              </span>
             </Label>
             <Input
               id="project-path"

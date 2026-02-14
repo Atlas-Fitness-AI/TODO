@@ -47,11 +47,11 @@ const PRIORITY_CONFIG: Record<
 }
 
 const STATUS_BORDER_COLOR: Record<Status, string> = {
-  "In Progress": "oklch(0.707 0.165 254.624)",
-  Stuck: "oklch(0.704 0.191 22.216)",
-  Ready: "oklch(0.852 0.199 91.936)",
-  Backlog: "oklch(0.552 0.016 285.938)",
-  Done: "oklch(0.723 0.191 149.579)",
+  Active: "oklch(0.707 0.165 254.624)",
+  Blocked: "oklch(0.704 0.191 22.216)",
+  Queued: "oklch(0.852 0.199 91.936)",
+  Pending: "oklch(0.552 0.016 285.938)",
+  Resolved: "oklch(0.723 0.191 149.579)",
 }
 
 const HIDDEN_MESSAGES = [
@@ -75,15 +75,15 @@ function getStableMessage(title: string) {
   return HIDDEN_MESSAGES[Math.abs(hash) % HIDDEN_MESSAGES.length]
 }
 
-const ALL_STATUSES: Status[] = ["In Progress", "Stuck", "Ready", "Backlog", "Done"]
+const ALL_STATUSES: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 const ALL_PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]
 
 const STATUS_LABELS: Record<Status, string> = {
-  "In Progress": "In Progress",
-  Stuck: "Stuck",
-  Ready: "Ready",
-  Backlog: "Backlog",
-  Done: "Done",
+  Active: "Active",
+  Blocked: "Blocked",
+  Queued: "Queued",
+  Pending: "Pending",
+  Resolved: "Resolved",
 }
 
 interface TodoCardProps {
@@ -91,12 +91,15 @@ interface TodoCardProps {
   status: Status
   projectPath?: string
   onMoved?: () => void
+  focused?: boolean
+  resolvedTitles?: Set<string>
 }
 
-export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) {
+export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles }: TodoCardProps) {
   const priority = PRIORITY_CONFIG[item.priority]
   const hiddenMessage = getStableMessage(item.title)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [stepsExpanded, setStepsExpanded] = useState(false)
 
   async function handleDelete() {
     if (!projectPath) return
@@ -142,6 +145,29 @@ export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) 
     }
   }
 
+  async function handleToggleStep(stepIndex: number) {
+    if (!projectPath) return
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectPath,
+          title: item.title,
+          toggleStep: stepIndex,
+        }),
+      })
+      if (res.ok) {
+        onMoved?.()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Failed to toggle step")
+      }
+    } catch {
+      toast.error("Failed to toggle step")
+    }
+  }
+
   async function handlePriority(newPriority: Priority) {
     if (!projectPath) return
     try {
@@ -169,13 +195,13 @@ export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) 
     <ContextMenu>
       <ContextMenuTrigger>
         <CardSpotlight
-          className="border border-border/50 border-l-2 bg-card/50 !p-4 !rounded-none"
+          className={`border border-l-2 bg-card/50 !p-4 !rounded-none ${focused ? "border-primary/60 ring-1 ring-primary/30" : "border-border/50"}`}
           style={{ borderLeftColor: STATUS_BORDER_COLOR[status] }}
           radius={250}
           color="rgba(255, 100, 50, 0.06)"
           revealContent={
             <div className="absolute inset-0 flex items-start justify-end p-4">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-white mt-[3px] mr-16">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-black dark:text-white mt-[3px] mr-16">
                 {hiddenMessage}
               </span>
             </div>
@@ -260,6 +286,112 @@ export function TodoCard({ item, status, projectPath, onMoved }: TodoCardProps) 
             ))}
           </div>
         )}
+
+        {/* Dependencies */}
+        {item.dependencies && (
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
+              depends on
+            </span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {item.dependencies.split(",").map((dep) => dep.trim()).filter(Boolean).map((dep) => {
+                const isResolved = resolvedTitles?.has(dep) ?? false
+                return (
+                  <code
+                    key={dep}
+                    className={`text-[11px] font-mono px-2 py-0.5 ${
+                      isResolved
+                        ? "text-green-400/80 bg-green-400/5 border border-green-400/10"
+                        : "text-yellow-400/80 bg-yellow-400/5 border border-yellow-400/10"
+                    }`}
+                  >
+                    {isResolved ? "✓" : "⧖"} {dep}
+                  </code>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Steps */}
+        {item.steps && item.steps.length > 0 && (() => {
+          const completed = item.steps.filter((s) => s.completed).length
+          const total = item.steps.length
+          const pct = Math.round((completed / total) * 100)
+          return (
+            <div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setStepsExpanded(!stepsExpanded)
+                }}
+                className="flex items-center gap-2 w-full group"
+              >
+                <div className="flex-1 h-1.5 bg-border/30 overflow-hidden">
+                  <div
+                    className="h-full bg-primary/60 transition-all duration-300"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 shrink-0">
+                  steps {completed}/{total}
+                </span>
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  className={`text-muted-foreground/40 transition-transform ${stepsExpanded ? "rotate-180" : ""}`}
+                >
+                  <path d="M2 4L5 7L8 4" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </button>
+              {stepsExpanded && (
+                <div className="overflow-x-auto flex flex-nowrap gap-2 py-2 mt-1">
+                  {item.steps.map((step, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleToggleStep(i)
+                      }}
+                      className={`shrink-0 flex items-center gap-1.5 border px-2 py-1 transition-colors hover:border-primary/30 ${
+                        step.completed
+                          ? "border-green-400/20 bg-green-400/5"
+                          : "border-border/50 bg-card/30"
+                      }`}
+                    >
+                      <span
+                        className={`size-3 shrink-0 border flex items-center justify-center ${
+                          step.completed
+                            ? "border-green-400/50 bg-green-400/20"
+                            : "border-border"
+                        }`}
+                      >
+                        {step.completed && (
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                            <path d="M1.5 4L3 5.5L6.5 2" stroke="currentColor" strokeWidth="1.5" className="text-green-400" />
+                          </svg>
+                        )}
+                      </span>
+                      <span
+                        className={`text-[11px] font-mono whitespace-nowrap ${
+                          step.completed
+                            ? "line-through text-muted-foreground/40"
+                            : "text-foreground/80"
+                        }`}
+                      >
+                        {step.title}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Resolution */}
         {item.resolution && (

@@ -9,11 +9,11 @@ import { TodoCard } from "./todo-card"
 import type { TodoSection as TodoSectionType, Status } from "@/lib/types"
 
 const STATUS_DISPLAY: Record<Status, { label: string; color: string }> = {
-  "In Progress": { label: "IN_PROGRESS", color: "text-blue-400" },
-  Stuck: { label: "BLOCKED", color: "text-red-400" },
-  Ready: { label: "READY", color: "text-green-400" },
-  Backlog: { label: "BACKLOG", color: "text-zinc-500" },
-  Done: { label: "DONE", color: "text-zinc-600" },
+  Active: { label: "ACTIVE", color: "text-blue-400" },
+  Blocked: { label: "BLOCKED", color: "text-red-400" },
+  Queued: { label: "QUEUED", color: "text-green-400" },
+  Pending: { label: "PENDING", color: "text-zinc-500" },
+  Resolved: { label: "RESOLVED", color: "text-zinc-600" },
 }
 
 interface TodoSectionProps {
