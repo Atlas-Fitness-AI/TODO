@@ -39,12 +39,12 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 **Data flow:**
 - `app/page.tsx` — server component reads cookies + calls `loadAllProjects()` from disk, passes as props
 - `components/dashboard.tsx` — client component, wraps data in `useProjectPolling()` for auto-refresh every 3s
-- `lib/parser.ts` — regex-based parser converts TODO.md/DONE.md markdown into typed `TodoSection[]`/`TodoItem[]`. Includes `STATUS_ALIASES` mapping old names (In Progress, Ready, Stuck, Backlog, Done) to new canonical names for backwards compatibility with projects that haven't migrated yet.
+- `lib/parser.ts` — regex-based parser converts TODO.md/DONE.md markdown into typed `TodoSection[]`/`TodoItem[]`. Handles multi-line `Steps` field (checklist of sub-tasks). Includes `STATUS_ALIASES` mapping old names (In Progress, Ready, Stuck, Backlog, Done) to new canonical names for backwards compatibility with projects that haven't migrated yet.
 - `lib/projects.ts` — reads `~/.claudedo/config.json` for project paths, loads and parses each project's TODO.md + DONE.md
 
 **API routes:**
 - `app/api/projects/route.ts` — GET (list projects + activity), PUT (validate path), POST (add), PATCH (rename), DELETE (remove). All operate on `~/.claudedo/config.json`.
-- `app/api/tasks/route.ts` — POST (add task), PATCH (move status or change priority), DELETE (clear activity log). Reads/writes TODO.md via parser + serializer, logs events to `.todo-activity.json`.
+- `app/api/tasks/route.ts` — POST (add task with optional steps), PATCH (move status, change priority, or toggle step), DELETE (delete task, clear status group, or clear activity log). Reads/writes TODO.md via parser + serializer, logs events to `.todo-activity.json`.
 - `app/api/open/route.ts` — POST to open a project path in Finder or Terminal (validates path is a registered project)
 
 **Key patterns:**
@@ -72,6 +72,7 @@ Use the `/todo` skill to manage items:
 - `/todo` or `/todo status` — overview of all items
 - `/todo add [description]` — add a new item (bugs, features, tasks)
 - `/todo done [item]` — mark an item as completed
+- `/todo done step [text]` — mark a step as complete on the active task
 - `/todo move [item] [status]` — move an item to any status directly
 - `/todo start [item]` — start working on a specific task (with briefing)
 - `/todo next` — pick the highest-priority item to work on

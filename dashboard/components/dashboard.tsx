@@ -124,6 +124,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
   const [priorityFilter, setPriorityFilter] = useState<Set<Priority>>(new Set())
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
   const [clearDialogOpen, setClearDialogOpen] = useState(false)
+  const [clearGroupDialogOpen, setClearGroupDialogOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<ActivityItemProps | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [addTaskOpen, setAddTaskOpen] = useState(false)
@@ -204,7 +205,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
       const tag = target.tagName
       if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return
       // Skip when any dialog is open
-      if (helpOpen || clearDialogOpen || selectedEvent || addTaskOpen) return
+      if (helpOpen || clearDialogOpen || clearGroupDialogOpen || selectedEvent || addTaskOpen) return
 
       const key = e.key
 
@@ -256,7 +257,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [helpOpen, clearDialogOpen, selectedEvent, addTaskOpen, selectedProject, currentTabItems.length])
+  }, [helpOpen, clearDialogOpen, clearGroupDialogOpen, selectedEvent, addTaskOpen, selectedProject, currentTabItems.length])
 
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen} className="!h-svh overflow-hidden">
@@ -310,7 +311,17 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                       <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
                         tasks
                       </div>
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                        <button
+                          className="size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                          aria-label="Clear tasks in current tab"
+                          disabled={currentTabItems.length === 0}
+                          onClick={() => setClearGroupDialogOpen(true)}
+                        >
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                            <rect x="0" y="3" width="8" height="2" fill="currentColor" />
+                          </svg>
+                        </button>
                         <AddTaskDialog projectPath={selectedProject.path} existingTasks={existingTasks} onAdded={refresh} open={addTaskOpen} onOpenChange={setAddTaskOpen} />
                       </div>
                     </div>
@@ -482,6 +493,44 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                   // silently fail
                 }
                 setClearDialogOpen(false)
+              }}
+            >
+              Clear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={clearGroupDialogOpen} onOpenChange={setClearGroupDialogOpen}>
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+              <span className="text-destructive">&gt;</span> Clear {selectedTab} Tasks
+            </DialogTitle>
+            <DialogDescription>
+              This will delete all {currentTabItems.length} task{currentTabItems.length !== 1 ? "s" : ""} in <span className="text-foreground font-medium">{selectedTab}</span>. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              className="uppercase tracking-[0.15em] font-mono text-[10px]"
+              onClick={async () => {
+                if (!selectedProject) return
+                try {
+                  const res = await fetch("/api/tasks", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ projectPath: selectedProject.path, clearStatus: selectedTab }),
+                  })
+                  if (res.ok) {
+                    toast.success(`Cleared ${selectedTab} tasks`)
+                    refresh()
+                  }
+                } catch {
+                  toast.error("Failed to clear tasks")
+                }
+                setClearGroupDialogOpen(false)
               }}
             >
               Clear

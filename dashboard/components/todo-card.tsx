@@ -99,6 +99,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
   const priority = PRIORITY_CONFIG[item.priority]
   const hiddenMessage = getStableMessage(item.title)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [stepsExpanded, setStepsExpanded] = useState(false)
 
   async function handleDelete() {
     if (!projectPath) return
@@ -141,6 +142,29 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
       }
     } catch {
       toast.error("Failed to move task")
+    }
+  }
+
+  async function handleToggleStep(stepIndex: number) {
+    if (!projectPath) return
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectPath,
+          title: item.title,
+          toggleStep: stepIndex,
+        }),
+      })
+      if (res.ok) {
+        onMoved?.()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Failed to toggle step")
+      }
+    } catch {
+      toast.error("Failed to toggle step")
     }
   }
 
@@ -288,6 +312,86 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
             </div>
           </div>
         )}
+
+        {/* Steps */}
+        {item.steps && item.steps.length > 0 && (() => {
+          const completed = item.steps.filter((s) => s.completed).length
+          const total = item.steps.length
+          const pct = Math.round((completed / total) * 100)
+          return (
+            <div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setStepsExpanded(!stepsExpanded)
+                }}
+                className="flex items-center gap-2 w-full group"
+              >
+                <div className="flex-1 h-1.5 bg-border/30 overflow-hidden">
+                  <div
+                    className="h-full bg-primary/60 transition-all duration-300"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 shrink-0">
+                  steps {completed}/{total}
+                </span>
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  className={`text-muted-foreground/40 transition-transform ${stepsExpanded ? "rotate-180" : ""}`}
+                >
+                  <path d="M2 4L5 7L8 4" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </button>
+              {stepsExpanded && (
+                <div className="overflow-x-auto flex flex-nowrap gap-2 py-2 mt-1">
+                  {item.steps.map((step, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleToggleStep(i)
+                      }}
+                      className={`shrink-0 flex items-center gap-1.5 border px-2 py-1 transition-colors hover:border-primary/30 ${
+                        step.completed
+                          ? "border-green-400/20 bg-green-400/5"
+                          : "border-border/50 bg-card/30"
+                      }`}
+                    >
+                      <span
+                        className={`size-3 shrink-0 border flex items-center justify-center ${
+                          step.completed
+                            ? "border-green-400/50 bg-green-400/20"
+                            : "border-border"
+                        }`}
+                      >
+                        {step.completed && (
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                            <path d="M1.5 4L3 5.5L6.5 2" stroke="currentColor" strokeWidth="1.5" className="text-green-400" />
+                          </svg>
+                        )}
+                      </span>
+                      <span
+                        className={`text-[11px] font-mono whitespace-nowrap ${
+                          step.completed
+                            ? "line-through text-muted-foreground/40"
+                            : "text-foreground/80"
+                        }`}
+                      >
+                        {step.title}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Resolution */}
         {item.resolution && (

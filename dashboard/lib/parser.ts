@@ -1,4 +1,4 @@
-import type { TodoItem, TodoSection, Priority, Status } from "./types"
+import type { TodoItem, TodoSection, Priority, Status, Step } from "./types"
 
 const VALID_STATUSES: Status[] = [
   "Active",
@@ -134,6 +134,8 @@ function parseItems(content: string, status: Status): TodoItem[] {
             .filter(Boolean)
         : undefined
 
+      const steps = fields.steps ? parseSteps(fields.steps) : undefined
+
       const item: TodoItem = {
         title,
         priority,
@@ -145,6 +147,7 @@ function parseItems(content: string, status: Status): TodoItem[] {
         ...(fields.acceptance && { acceptance: fields.acceptance }),
         ...(fields.code && { code: fields.code }),
         ...(fields.dependencies && { dependencies: fields.dependencies }),
+        ...(steps && steps.length > 0 && { steps }),
         ...(fields.added && { added: fields.added }),
         ...(fields.started && { started: fields.started }),
         ...(fields.completed && { completed: fields.completed }),
@@ -162,15 +165,41 @@ function parseItems(content: string, status: Status): TodoItem[] {
   return items
 }
 
+function parseSteps(raw: string): Step[] {
+  return raw.split("\n").map((line) => {
+    const match = line.match(/^-\s+\[([ x])\]\s+(.+)/)
+    if (!match) return null
+    return { title: match[2].trim(), completed: match[1] === "x" }
+  }).filter((s): s is Step => s !== null)
+}
+
 function parseFields(lines: string[]): Record<string, string> {
   const fields: Record<string, string> = {}
 
-  for (const line of lines) {
-    const match = line.match(/^-\s+\*\*([^*]+)\*\*:\s*(.*)/)
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(/^-\s+\*\*([^*]+)\*\*:\s*(.*)/)
     if (match) {
+      const key = match[1].trim().toLowerCase()
       const value = match[2].trim()
-      if (value) {
-        fields[match[1].trim().toLowerCase()] = value
+
+      if (key === "steps") {
+        // Collect subsequent indented checkbox lines
+        const stepLines: string[] = []
+        while (i + 1 < lines.length) {
+          const nextLine = lines[i + 1]
+          const stepMatch = nextLine.match(/^\s+-\s+\[([ x])\]\s+(.+)/)
+          if (stepMatch) {
+            stepLines.push(nextLine.trim())
+            i++
+          } else {
+            break
+          }
+        }
+        if (stepLines.length > 0) {
+          fields[key] = stepLines.join("\n")
+        }
+      } else if (value) {
+        fields[key] = value
       }
     }
   }
@@ -212,6 +241,8 @@ export function parseDoneMarkdown(content: string): TodoItem[] {
             .filter(Boolean)
         : undefined
 
+      const steps = fields.steps ? parseSteps(fields.steps) : undefined
+
       items.push({
         title,
         priority,
@@ -221,6 +252,7 @@ export function parseDoneMarkdown(content: string): TodoItem[] {
         ...(files && files.length > 0 && { files }),
         ...(fields.context && { context: fields.context }),
         ...(fields.acceptance && { acceptance: fields.acceptance }),
+        ...(steps && steps.length > 0 && { steps }),
         ...(fields.added && { added: fields.added }),
         ...(fields.started && { started: fields.started }),
         ...(fields.completed && { completed: fields.completed }),
@@ -244,6 +276,7 @@ const FIELD_ORDER = [
   "acceptance",
   "code",
   "dependencies",
+  "steps",
   "added",
   "started",
   "completed",
@@ -280,6 +313,14 @@ function serializeItem(item: TodoItem): string {
         break
       case "dependencies":
         if (item.dependencies) lines.push(`- **Dependencies**: ${item.dependencies}`)
+        break
+      case "steps":
+        if (item.steps && item.steps.length > 0) {
+          lines.push(`- **Steps**:`)
+          for (const step of item.steps) {
+            lines.push(`  - [${step.completed ? "x" : " "}] ${step.title}`)
+          }
+        }
         break
       case "added":
         if (item.added) lines.push(`- **Added**: ${item.added}`)

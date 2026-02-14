@@ -29,6 +29,7 @@ Rules and configuration for this project's TODO system. Claude reads this file w
 | Field            | Purpose                                    |
 | :--------------- | :----------------------------------------- |
 | **Dependencies** | Comma-separated titles of other TODO items this depends on. The skill checks these before starting work. |
+| **Steps**        | Checklist of sub-tasks or milestones. Each step is `- [ ] title` (pending) or `- [x] title` (done). The skill tracks progress and suggests resolving the parent when all steps complete. |
 | **Started**      | Date work began (auto-set on Active)          |
 | **Completed**    | Date finished (auto-set on Resolved)          |
 | **Resolution**   | What was done to resolve (auto-set on Resolved)|
@@ -89,7 +90,7 @@ Use one or more of these tags. Add project-specific categories below the default
 
 1. **File references must be real paths.** Verify files exist before adding. Use relative paths from project root with line numbers: `` `src/components/Button.tsx:42` ``.
 
-2. **One item per task.** If a task has multiple steps, either break into separate items or use a checklist within the description.
+2. **One item per task.** If a task has multiple steps, use the **Steps** field to track them as a checklist. Break into separate items only if the steps are independently trackable work.
 
 3. **Keep descriptions actionable.** Say what needs to happen, not just what's wrong. Details go in Context/Code fields.
 

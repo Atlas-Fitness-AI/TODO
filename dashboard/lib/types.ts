@@ -2,6 +2,11 @@ export type Priority = "Critical" | "High" | "Medium" | "Low"
 
 export type Status = "Active" | "Blocked" | "Queued" | "Pending" | "Resolved"
 
+export interface Step {
+  title: string
+  completed: boolean
+}
+
 export interface TodoItem {
   title: string
   priority: Priority
@@ -12,6 +17,7 @@ export interface TodoItem {
   acceptance?: string
   code?: string
   dependencies?: string
+  steps?: Step[]
   added?: string
   started?: string
   completed?: string

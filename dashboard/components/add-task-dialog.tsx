@@ -49,6 +49,7 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState<Status>("Queued")
   const [selectedDeps, setSelectedDeps] = useState<Set<string>>(new Set())
+  const [stepsText, setStepsText] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,6 +60,7 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
     setDescription("")
     setStatus("Queued")
     setSelectedDeps(new Set())
+    setStepsText("")
     setSubmitting(false)
     setError(null)
   }
@@ -84,6 +86,13 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
           description: description.trim() || undefined,
           status,
           ...(selectedDeps.size > 0 && { dependencies: Array.from(selectedDeps).join(", ") }),
+          ...(stepsText.trim() && {
+            steps: stepsText
+              .split("\n")
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((title) => ({ title, completed: false })),
+          }),
         }),
       })
 
@@ -292,6 +301,24 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
               </div>
             </div>
           )}
+          <div className="grid gap-1.5">
+            <Label
+              htmlFor="task-steps"
+              className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
+            >
+              Steps{" "}
+              <span className="normal-case tracking-normal text-muted-foreground/50">
+                (optional, one per line)
+              </span>
+            </Label>
+            <Textarea
+              id="task-steps"
+              placeholder={"Design schema\nImplement API\nWrite tests"}
+              value={stepsText}
+              onChange={(e) => setStepsText(e.target.value)}
+              className="font-mono text-[11px] min-h-[60px]"
+            />
+          </div>
           {error && (
             <div className="text-[10px] uppercase tracking-wider text-destructive font-mono">
               <span className="text-destructive">err:</span> {error}
