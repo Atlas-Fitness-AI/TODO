@@ -67,10 +67,11 @@ Every item gets a structured format based on its type:
 - **Files**: `src/auth/session.ts:42`, `src/middleware/refresh.ts:18`
 - **Description**: Session refresh silently fails after 30 minutes, logging users out.
 - **Context**: The refresh token check compares expiry against server time but the token uses UTC while the server uses local time.
+- **Dependencies**: Migrate session store to Redis
 - **Added**: 2026-02-12
 ```
 
-Bugs require file references and context. Features require acceptance criteria. Tasks require a description of what and why.
+Bugs require file references and context. Features require acceptance criteria. Tasks require a description of what and why. Any item can optionally declare dependencies on other tasks — the skill checks these before starting work and warns about unresolved ones.
 
 ### Status Flow
 
@@ -136,7 +137,7 @@ The dashboard reads `TODO.md` files directly from disk — no server or database
 - Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
 - Switch between status tabs (Active, Blocked, Queued, Pending, Resolved)
 - Activity feed — shows task movements (added, started, completed, blocked) with timestamps, powered by `/todo` skill actions
-- Add new tasks directly from the dashboard with priority, status, category, and description
+- Add new tasks directly from the dashboard with priority, status, category, description, and dependencies
 - Move tasks between statuses and change priority via right-click context menu on cards
 - Search and filter tasks by priority, category, or keyword
 - Light/Dark/System theme toggle with cookie-based persistence

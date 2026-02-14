@@ -28,7 +28,7 @@ Rules and configuration for this project's TODO system. Claude reads this file w
 
 | Field            | Purpose                                    |
 | :--------------- | :----------------------------------------- |
-| **Dependencies** | Other TODO items this depends on              |
+| **Dependencies** | Comma-separated titles of other TODO items this depends on. The skill checks these before starting work. |
 | **Started**      | Date work began (auto-set on Active)          |
 | **Completed**    | Date finished (auto-set on Resolved)          |
 | **Resolution**   | What was done to resolve (auto-set on Resolved)|

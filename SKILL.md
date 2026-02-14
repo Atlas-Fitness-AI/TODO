@@ -117,8 +117,13 @@ Gather information and enforce documentation standards:
    - Category: From the project's category list in TODORULES.md
    - Description: 1-3 sentences, actionable
 4. Add conditional fields based on type (see above).
-5. Default status: **Queued** (or **Pending** if missing required info).
-6. Insert the item into the correct status section in TODO.md, ordered by priority within the section (Critical first).
+5. **Check for dependencies:**
+   - Look at existing items in Queued, Active, Blocked, and Pending sections of TODO.md.
+   - If there are existing items, list them as numbered options and ask: "Does this depend on any existing tasks?"
+   - If the user selects one or more, add `- **Dependencies**: [title1], [title2]` to the item (comma-separated titles).
+   - If the user says no or there are no existing items, omit the Dependencies field entirely (don't add an empty field).
+6. Default status: **Queued** (or **Pending** if missing required info).
+7. Insert the item into the correct status section in TODO.md, ordered by priority within the section (Critical first).
 
 Item format:
 ```markdown
@@ -177,23 +182,34 @@ Pick a specific item and begin working on it, with a full briefing.
 1. Parse `$ARGUMENTS` after "start". `[item]` can be a partial title match, item number, or keyword.
    - If ambiguous or missing, list Queued and Pending items and ask which one.
 2. Identify the item in TODO.md. If multiple items match, list them and ask.
-3. Move the item to **Active**:
+3. **Check dependencies before proceeding:**
+   - If the item has a `Dependencies` field, look up each dependency title in TODO.md and DONE.md/Resolved section.
+   - If any dependency is NOT resolved (i.e. still in Active, Queued, Blocked, or Pending), warn the user:
+     - List each unresolved dependency with its current status (e.g. "`Setup database` is still **Queued**").
+     - Ask: "This item has unresolved dependencies. Start anyway?"
+   - If all dependencies are resolved (in Resolved section or DONE.md) or the item has no dependencies, proceed normally.
+4. Move the item to **Active**:
    - Add `- **Started**: [today's date]` if not already present.
    - Remove `Blocked` reason if present (item was previously Blocked).
    - Remove the item from its current section and insert into **Active**, ordered by priority.
-4. Display a **task briefing**:
+5. Display a **task briefing**:
    - Show the full item with all fields.
    - If the item has **Files** references, read each referenced file and summarize the relevant code around the referenced line numbers.
    - Based on the item's description, acceptance criteria, and context, suggest a concrete starting approach — what to look at first, what the likely implementation steps are, and any potential gotchas.
-5. Confirm: show the item title and the status transition (e.g. Queued → Active).
+6. Confirm: show the item title and the status transition (e.g. Queued → Active).
 
 ### `next` - Pick Next Task
 
 1. Look at items in the **Queued** section only.
 2. Sort by priority: Critical > High > Medium > Low.
-3. Present the highest-priority item with full details.
-4. Ask if the user wants to start working on it.
-5. If yes: Move to **Active**, add `- **Started**: [today's date]`.
+3. **Factor in dependencies:**
+   - For each candidate item, check if it has a `Dependencies` field.
+   - If it does, look up each dependency title in TODO.md and DONE.md/Resolved to see if all are resolved.
+   - Prefer items with no dependencies or all-resolved dependencies over items with unresolved dependencies.
+   - If the top-priority item has unresolved dependencies, mention it (e.g. "Highest priority is `[Title]` but it has unresolved dependencies: `[dep]` (Queued)") and offer the next item that has no dependency issues instead.
+4. Present the selected item with full details.
+5. Ask if the user wants to start working on it.
+6. If yes: Move to **Active**, add `- **Started**: [today's date]`.
 
 ### `stuck` - Mark as Blocked
 
@@ -223,6 +239,12 @@ Display a summary:
 
 **Resolved** (N items total)
 ```
+
+For items with dependencies, append dependency info to the line:
+- `- [Title] - [Priority] - [Category] - depends on: [dep1] ✓, [dep2] ⧖`
+- `✓` = dependency is resolved, `⧖` = dependency is still open (Active, Queued, Blocked, or Pending)
+- Look up each dependency title in TODO.md and DONE.md/Resolved to determine its status.
+- Only show this suffix for items that have a Dependencies field.
 
 Focus attention on Active and Blocked items first.
 

@@ -92,9 +92,10 @@ interface TodoCardProps {
   projectPath?: string
   onMoved?: () => void
   focused?: boolean
+  resolvedTitles?: Set<string>
 }
 
-export function TodoCard({ item, status, projectPath, onMoved, focused }: TodoCardProps) {
+export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles }: TodoCardProps) {
   const priority = PRIORITY_CONFIG[item.priority]
   const hiddenMessage = getStableMessage(item.title)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -259,6 +260,32 @@ export function TodoCard({ item, status, projectPath, onMoved, focused }: TodoCa
                 {file}
               </code>
             ))}
+          </div>
+        )}
+
+        {/* Dependencies */}
+        {item.dependencies && (
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
+              depends on
+            </span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {item.dependencies.split(",").map((dep) => dep.trim()).filter(Boolean).map((dep) => {
+                const isResolved = resolvedTitles?.has(dep) ?? false
+                return (
+                  <code
+                    key={dep}
+                    className={`text-[11px] font-mono px-2 py-0.5 ${
+                      isResolved
+                        ? "text-green-400/80 bg-green-400/5 border border-green-400/10"
+                        : "text-yellow-400/80 bg-yellow-400/5 border border-yellow-400/10"
+                    }`}
+                  >
+                    {isResolved ? "✓" : "⧖"} {dep}
+                  </code>
+                )
+              })}
+            </div>
           </div>
         )}
 

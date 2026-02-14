@@ -165,6 +165,19 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
 
   const activityEvents = selectedProject?.activity ?? []
 
+  const existingTasks = useMemo(() => {
+    if (!selectedProject) return []
+    return selectedProject.sections
+      .filter((s) => s.status !== "Resolved")
+      .flatMap((s) => s.items)
+  }, [selectedProject])
+
+  const resolvedTitles = useMemo(() => {
+    if (!selectedProject) return new Set<string>()
+    const resolved = selectedProject.sections.find((s) => s.status === "Resolved")
+    return new Set((resolved?.items ?? []).map((i) => i.title))
+  }, [selectedProject])
+
   const currentTabItems = useMemo(() => {
     if (!selectedProject) return []
     const section = selectedProject.sections.find((s) => s.status === selectedTab)
@@ -298,7 +311,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                         tasks
                       </div>
                       <div className="absolute right-0 top-1/2 -translate-y-1/2">
-                        <AddTaskDialog projectPath={selectedProject.path} onAdded={refresh} open={addTaskOpen} onOpenChange={setAddTaskOpen} />
+                        <AddTaskDialog projectPath={selectedProject.path} existingTasks={existingTasks} onAdded={refresh} open={addTaskOpen} onOpenChange={setAddTaskOpen} />
                       </div>
                     </div>
                     {TAB_ORDER.map((status) => {
@@ -330,6 +343,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                                     projectPath={selectedProject.path}
                                     onMoved={refresh}
                                     focused={focusedCardIndex === index && status === selectedTab}
+                                    resolvedTitles={resolvedTitles}
                                   />
                                 </div>
                               ))}

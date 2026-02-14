@@ -106,13 +106,14 @@ async function getArchiveConfig(projectPath: string): Promise<{ archive: boolean
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { projectPath, title, priority, category, description, status } = body as {
+    const { projectPath, title, priority, category, description, status, dependencies } = body as {
       projectPath: string
       title: string
       priority: Priority
       category: string[]
       description?: string
       status?: Status
+      dependencies?: string
     }
 
     if (!projectPath || !title?.trim()) {
@@ -163,6 +164,7 @@ export async function POST(request: Request) {
       category: category || [],
       status: targetStatus,
       ...(description?.trim() && { description: description.trim() }),
+      ...(dependencies?.trim() && { dependencies: dependencies.trim() }),
       added: getToday(),
       ...(targetStatus === "Active" && { started: getToday() }),
     }
