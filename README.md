@@ -87,6 +87,7 @@ Every item gets a structured format based on its type:
 - **Description**: Session refresh silently fails after 30 minutes, logging users out.
 - **Context**: The refresh token check compares expiry against server time but the token uses UTC while the server uses local time.
 - **Dependencies**: Migrate session store to Redis
+- **Branch**: release-2.1
 - **Steps**:
   - [x] Fix timezone comparison
   - [ ] Add refresh token rotation
@@ -95,6 +96,8 @@ Every item gets a structured format based on its type:
 ```
 
 Bugs require file references and context. Features require acceptance criteria. Tasks require a description of what and why. Any item can optionally declare dependencies on other tasks — the skill checks these before starting work and warns about unresolved ones.
+
+When an item is resolved it gains `Completed`, `Resolution`, and (for user-visible work) `Changelog` fields. Cutting a release adds `Released`. See [Release Notes](#release-notes) below.
 
 ### Steps
 
@@ -115,6 +118,27 @@ Pending --> Queued --> Active --> Resolved
 - **Active** — actively being worked on
 - **Blocked** — blocked, must have a reason
 - **Resolved** — completed and archived
+
+### Branch Scoping
+
+Items can carry a `Branch` field that scopes them to a git branch, for example a release branch that lives alongside main. Items without the field are mainline work.
+
+- `/todo add` sets the branch only when you name one ("for the beta branch"). Mainline work stays unscoped.
+- `/todo next` checks the current git branch and prefers items scoped to it plus unscoped items. Items waiting on other branches are mentioned, not selected.
+- `/todo start` warns if the item's branch differs from the one you're on and offers to check it out.
+- `/todo status` annotates counts per branch and flags items whose branch no longer exists.
+- The dashboard groups each project's tasks into a **main** directory plus one per branch. Right-click a card to move it between branches.
+
+### Release Notes
+
+The skill keeps consumer-facing release notes as a by-product of resolving work.
+
+- When you `/todo done` something user-visible, the skill drafts a one-sentence `Changelog` line in plain language and shows it for you to adjust. Internal refactors, chores, and tests skip this.
+- `/todo changelog` previews everything resolved since the last release, grouped into **New** and **Fixed**, and offers to draft lines for resolved items that don't have one.
+- `/todo release v0.3.0` writes that block to the top of `CHANGELOG.md` and stamps every in-scope resolved item with `Released: v0.3.0`. If you omit the version, the skill suggests the next patch bump.
+- Both commands respect branch scoping: name a branch to cut release notes for it, otherwise you get mainline changes.
+
+The dashboard offers the same flow from the Resolved tab's Release Notes dialog, including a Cut Release button.
 
 ### Archiving
 
@@ -165,20 +189,23 @@ The dashboard's local Next.js server reads `TODO.md` files directly from disk �
 **Features:**
 - Add projects by path — validates the directory and auto-detects the project name from `TODO.md`
 - Switch between status tabs (Active, Blocked, Queued, Pending, Resolved)
+- Branch directories in the sidebar — each project shows a **main** entry plus one per branch its tasks are scoped to, with active counts
+- Project hero panel with status charts, and a Resolved hero with throughput this week and month, priority breakdown, and steps completed
+- Release Notes dialog on the Resolved tab — preview pending changelog entries grouped New/Fixed, edit lines, and cut a release that writes `CHANGELOG.md` and stamps items
 - Activity feed — shows task movements (added, started, completed, blocked) with timestamps, powered by `/todo` skill actions
-- Add new tasks directly from the dashboard with priority, status, category, description, dependencies, and steps
+- Add new tasks directly from the dashboard with priority, status, category, description, dependencies, steps, and branch (prefilled from the selected branch directory)
 - Task steps render as a progress bar with expandable mini cards — click to toggle completion
 - Clear all tasks in a status group with the "—" button next to "+"
-- Move tasks between statuses and change priority via right-click context menu on cards
+- Move tasks between statuses, change priority, or move to another branch via right-click context menu on cards
 - Search and filter tasks by priority, category, or keyword
-- Light/Dark/System theme toggle with cookie-based persistence
+- Eight color themes (Light, Dark, Tokyo, CRT, Rosé, Synth, Ember, Dawn) with cookie-based persistence
 - Auto-refresh — dashboard updates within seconds when `TODO.md` changes externally
 - Right-click projects to rename, remove, copy path, open in Finder, or open in Terminal
 - Keyboard shortcuts — `1-5` switch tabs, `j/k` navigate cards, `n` add task, `/` search, `?` help
 - Help modal with Overview, Skill, Dashboard, and Keys reference tabs
 - UI state persists across page reloads (selected project, active tab, sidebar, theme)
 - Backwards compatible with old status names (In Progress, Ready, Stuck, Backlog, Done)
-- Sci-fi aesthetic with spotlight card effects
+- Sci-fi aesthetic with spotlight card effects, with a mobile layout
 
 Projects are stored in `~/.atlas-todo/config.json`. You can add them via the "+" button in the sidebar or edit the file directly.
 
