@@ -5,12 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 TODO is two things in one repo:
-1. **`/todo` Claude Code skill** — a structured TODO system that Claude uses to manage tasks in any project (defined in `SKILL.md`, installed to `~/.claude/skills/todo/`)
+1. **Shared `todo` skill** — a structured TODO system for Claude Code (`/todo`) and Codex (`$todo`), defined in `SKILL.md` and installed to `~/.claude/skills/todo/` and `~/.agents/skills/todo/`
 2. **Web dashboard** — a Next.js app in `dashboard/` that visualizes tasks across all projects
 
 ## Skill Sync
 
-After editing `SKILL.md` or any file in `templates/`, always run `./install.sh` to sync to `~/.claude/skills/todo/`. Do this automatically — don't wait for the user to ask.
+After editing `SKILL.md`, `install.sh`, or any file in `templates/`, run `./install.sh` to sync both agents' installations. Do this automatically within the host's filesystem permissions; use its approval mechanism when required.
 
 ## Commands
 
@@ -23,14 +23,15 @@ cd dashboard && bun run lint     # ESLint
 
 ### Skill
 ```bash
-./install.sh                     # Sync skill + templates to ~/.claude/skills/todo/
+./install.sh                     # Sync skill + templates for both agents
+bash tests/install.sh            # Check staged installs, updates, and migration
 ```
 
 ## Architecture
 
 ### Skill (`SKILL.md` + `templates/`)
 
-The skill is a prompt-based instruction set, not executable code. `SKILL.md` defines commands (`add`, `done`, `move`, `start`, `next`, `stuck`, `status`, `scan`, `init`, `update`, `help`) that Claude follows when users invoke `/todo`. Templates in `templates/` are copied to projects on `/todo init`.
+The skill is a prompt-based instruction set, not executable code. `SKILL.md` defines commands (`add`, `done`, `move`, `start`, `next`, `stuck`, `status`, `scan`, `changelog`, `release`, `dashboard`, `init`, `update`, `help`) that either agent follows. The installer copies the same workflow to both hosts, stripping only Claude-specific frontmatter from the Codex copy. Templates resolve relative to the installed skill. `init` and `update` use `templates/AGENT-TODO.md` to maintain a TODO System section in both project instruction files, preserving other guidance.
 
 ### Dashboard (`dashboard/`)
 
@@ -61,23 +62,29 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 
 - **Project registry**: `~/.atlas-todo/config.json` — array of `{ name, path }` entries
 - **Dashboard path**: `~/.atlas-todo/dashboard-path` — used by `/todo dashboard` to locate the dev server
-- **Skill install location**: `~/.claude/skills/todo/`
+- **Skill install locations**: `~/.claude/skills/todo/` (Claude Code), `~/.agents/skills/todo/` (Codex)
 - **Task data**: each project's `TODO.md` + `DONE.md` (markdown, parsed on read, no database)
 - **Activity log**: each project's `.todo-activity.json` — event log written by the `/todo` skill on every action, read by the dashboard for the activity feed (newest-first, max 50 events)
 
 ## TODO System
 
-This project uses a structured TODO system. Tasks, bugs, and features are tracked in `TODO.md` with rules defined in `TODORULES.md`.
+This project uses a shared TODO system. Read `TODORULES.md` for the project's rules and `TODO.md` for current tasks when managing work. Completed items live in the configured archive (default `DONE.md`).
 
-**Changelog system:** resolved items may carry `- **Changelog**: <consumer-facing sentence>` (written by the skill on `done`, or from the dashboard's Release Notes dialog on the Resolved tab) and `- **Released**: <version>` (stamped when a release is cut). Pending release notes = changelog set, no release stamp. The dialog and `/todo changelog` / `/todo release` group entries into New/Fixed (bug-ish category or "Fix…" title → Fixed).
+Use the `todo` skill: `/todo` in Claude Code or `$todo` in Codex. Both use the same commands:
 
-Use the `/todo` skill to manage items:
-- `/todo` or `/todo status` — overview of all items
-- `/todo add [description]` — add a new item (bugs, features, tasks)
-- `/todo done [item]` — mark an item as completed
-- `/todo done step [text]` — mark a step as complete on the active task
-- `/todo move [item] [status]` — move an item to any status directly
-- `/todo start [item]` — start working on a specific task (with briefing)
-- `/todo next` — pick the highest-priority item to work on
-- `/todo stuck [item]` — mark an item as blocked
-- `/todo scan` — find inline TODO comments in code and sync them
+- `status` — show current tasks (also the default with no command)
+- `add [description]` — document a bug, feature, or task
+- `start [item]` / `next` — start a specific task or select the next one
+- `done step [text]` — complete a step on the active task
+- `done [item]` — resolve and archive a task
+- `move [item] [status]` / `stuck [item]` — change status or record a blocker
+- `scan` — sync inline TODO/FIXME comments
+- `changelog` / `release [version]` — preview or write release notes
+- `dashboard` — launch the shared dashboard
+- `init` / `update` — initialize the system or refresh its templates and guidance
+
+For example: `/todo start Fix login timeout` in Claude Code or `$todo start Fix login timeout` in Codex.
+
+When the user mentions tasks, bugs, features, or work items, suggest tracking them with this system so nothing gets lost. When asked to track work, use this system and preserve its fields, steps, branch scope, and archive configuration. Update `.todo-activity.json` as specified by the skill so either agent's progress appears in the dashboard. Re-read task files before editing when continuing another session's work.
+
+**Changelog system:** resolved items may carry `- **Changelog**: <consumer-facing sentence>` (written by the skill on `done`, or from the dashboard's Release Notes dialog on the Resolved tab) and `- **Released**: <version>` (stamped when a release is cut). Pending release notes = changelog set, no release stamp. The dialog and the skill's `changelog` / `release` commands group entries into New/Fixed (bug-ish category or "Fix…" title → Fixed).

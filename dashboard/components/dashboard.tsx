@@ -847,7 +847,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     what is todo
                   </div>
                   <p className="text-muted-foreground leading-relaxed">
-                    A structured TODO system for <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:text-primary underline underline-offset-2">Claude Code</a> that turns Claude into a project task manager. Every task gets documented with enforced standards — priority, category, file references, context, and acceptance criteria.
+                    A shared TODO system for <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:text-primary underline underline-offset-2">Claude Code</a> and <a href="https://developers.openai.com/codex/skills/" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:text-primary underline underline-offset-2">Codex</a>. Either agent can pick up the same tasks, with enforced standards for priority, category, file references, context, and acceptance criteria.
                   </p>
                 </div>
 
@@ -924,7 +924,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     getting started
                   </div>
                   <p className="text-muted-foreground leading-relaxed">
-                    Run <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">/todo init</code> in any project to create <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODO.md</code>, <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODORULES.md</code>, and a <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">CLAUDE.md</code> section. If a TODO.md already exists, init migrates it to the structured format.
+                    Run <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">/todo init</code> in Claude Code or <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">$todo init</code> in Codex to set up <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODO.md</code>, <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODORULES.md</code>, and guidance in both CLAUDE.md and AGENTS.md. Existing structured tasks are preserved; unstructured tasks are migrated.
                   </p>
                 </div>
 
@@ -934,6 +934,9 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                   <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-2">
                     commands
                   </div>
+                  <p className="text-muted-foreground/60 mb-3">
+                    In Codex, replace <code className="text-primary/80">/todo</code> with <code className="text-primary/80">$todo</code>. All commands use the same task files and activity feed.
+                  </p>
                   <div className="grid gap-2 text-muted-foreground">
                     {[
                       ["/todo", "Status overview"],
@@ -986,7 +989,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     adding tasks
                   </div>
                   <p className="text-muted-foreground leading-relaxed">
-                    Use the <span className="text-primary">+</span> button to add tasks directly. For enforced documentation standards (file refs, acceptance criteria), use <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">/todo add</code> in Claude Code instead.
+                    Use the <span className="text-primary">+</span> button to add tasks directly. For enforced documentation standards (file refs, acceptance criteria), use <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">/todo add</code> in Claude Code or <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">$todo add</code> in Codex.
                   </p>
                 </div>
 

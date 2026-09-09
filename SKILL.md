@@ -1,13 +1,22 @@
 ---
 name: todo
-description: Manage project TODO items with strict documentation standards. Use when working with TODO.md, discussing tasks/bugs/features, or when the user mentions todos, work items, or task tracking.
-argument-hint: [add|done|move|start|next|stuck|status|scan|changelog|release|dashboard|init|update|help]
+description: Manage project TODO items with strict documentation standards. Use when working with TODO.md, when the user mentions tasks, bugs, features, work items, or task tracking, or when the user invokes the todo skill.
+argument-hint: "[add|done|move|start|next|stuck|status|scan|changelog|release|dashboard|init|update|help]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git rev-parse:*), Bash(git branch:*)
 ---
 
 # TODO Manager
 
-You manage a structured TODO system for this project. Every action must follow the rules in the project's `TODORULES.md`.
+You manage a structured TODO system shared by Claude Code, Codex, and the dashboard. Follow the project's `TODORULES.md` when managing tasks. The user's explicit instructions and decisions in the current session take precedence over this skill's defaults; do not ask again for information or confirmation already provided.
+
+## Agent Compatibility
+
+- **Claude Code:** invoke with `/todo [command] [details]`. Read the command and details from `$ARGUMENTS`.
+- **Codex:** invoke with `$todo [command] [details]`, or select the skill and describe the action. Read the command and details from the user's message; Codex does not need `$ARGUMENTS` substitution.
+- In the commands below, **arguments** means the command and details supplied through either host. No command means `status`. When showing examples or suggesting commands, use `/todo` for Claude Code and `$todo` for Codex; the reference below uses `/todo` as shorthand.
+- Use the host's available file-reading, editing, search, and shell tools. Claude's frontmatter tool names are not Codex tool requirements; the installer omits that metadata for Codex.
+- Resolve `templates/` relative to the directory containing this loaded `SKILL.md`, not the user's project or a hardcoded agent installation. Task files are always relative to the target project root.
+- Both agents read and edit the same `TODO.md`, configured archive, `TODORULES.md`, and `.todo-activity.json`. Continue from the current on-disk state when switching agents; do not create agent-specific copies or reset progress. Re-read before editing and preserve unrelated changes.
 
 ## First: Load Context
 
@@ -29,15 +38,15 @@ Items may carry an optional `- **Branch**: <name>` field scoping them to a git b
 
 ## Commands
 
-Route based on `$ARGUMENTS`:
+Route based on the arguments defined above:
 
 ### `init` - Initialize TODO System
 
-Check for existing files before doing anything:
+Check for existing files before doing anything. If TODO.md already follows this system and TODORULES.md exists, preserve both files and only ensure the agent guidance below is present. Use `update` when the user wants to refresh rules or audit existing tasks.
 
-**If `TODO.md` already exists with content (migration):**
+**Otherwise, if `TODO.md` already exists with content (migration):**
 1. Read the existing TODO.md in full.
-2. Read `~/.claude/skills/todo/templates/TODORULES.md` and write it to `./TODORULES.md` (rules are always fresh).
+2. Read `templates/TODORULES.md` and write it to `./TODORULES.md` (rules are always fresh).
 3. Parse the existing TODO.md and extract every item you can identify — look for headings, bullet points, checkboxes, status markers, or any structured/unstructured tasks.
 4. For each extracted item, map it to the structured format:
    - Infer priority from keywords (e.g. "critical", "high priority", "low"), existing priority labels, or position/context. Default to `Medium` if unclear.
@@ -49,30 +58,13 @@ Check for existing files before doing anything:
 7. Ask the user to review and adjust anything that was inferred incorrectly.
 
 **If `TODO.md` does not exist (fresh start):**
-1. Read `~/.claude/skills/todo/templates/TODORULES.md` and write it to `./TODORULES.md`
-2. Read `~/.claude/skills/todo/templates/TODO.md` and write it to `./TODO.md`
+1. Read `templates/TODORULES.md` and write it to `./TODORULES.md`
+2. Read `templates/TODO.md` and write it to `./TODO.md`
 3. Ask the user for the project name and update the `> Project:` line.
 
-**Always (after creating/migrating files):**
-- Add a TODO system section to the project's `CLAUDE.md`. If `CLAUDE.md` doesn't exist, create it with just this section. If it already exists, append this section (don't overwrite existing content). The section should look like:
-
-```markdown
-## TODO System
-
-This project uses a structured TODO system. Tasks, bugs, and features are tracked in `TODO.md` with rules defined in `TODORULES.md`.
-
-Use the `/todo` skill to manage items:
-- `/todo` or `/todo status` — overview of all items
-- `/todo add [description]` — add a new item (bugs, features, tasks)
-- `/todo done [item]` — mark an item as completed
-- `/todo start [item]` — start working on a specific task (with briefing)
-- `/todo next` — pick the highest-priority item to work on
-- `/todo stuck [item]` — mark an item as blocked
-- `/todo scan` — find inline TODO comments in code and sync them
-
-When the user mentions tasks, bugs, features, or work items, suggest using `/todo` to keep everything tracked and documented.
-```
-
+**Always (including already-initialized projects):**
+- Read `templates/AGENT-TODO.md` and ensure its `## TODO System` section appears in **both** the project's `CLAUDE.md` and `AGENTS.md`, regardless of which agent runs init.
+- If a guidance file is missing, create it with this section. If the section is missing, append it. If present, update that section without duplicating it; its boundary is the next level-one or level-two heading (or end of file). Preserve all other guidance and any project-specific TODO instructions that still apply.
 - Tell the user to customize `TODORULES.md` for their project (categories, archive behavior, etc.).
 
 ### `update` - Refresh Skill Templates
@@ -80,7 +72,7 @@ When the user mentions tasks, bugs, features, or work items, suggest using `/tod
 Use this when the todo skill itself has been updated and you want to pull in the latest templates without losing existing TODO items.
 
 **Refresh TODORULES.md:**
-1. Read `~/.claude/skills/todo/templates/TODORULES.md` (the latest template).
+1. Read `templates/TODORULES.md` (the latest template).
 2. Read the project's current `./TODORULES.md`.
 3. Extract any project-specific customizations from the current file:
    - **Project-Specific Categories**: Any categories added under that section.
@@ -108,11 +100,8 @@ Use this when the todo skill itself has been updated and you want to pull in the
    - Reformat items to match the current structure.
 10. Remind the user to review `TODORULES.md` in case new options were added that they may want to customize.
 
-**Ensure CLAUDE.md is up to date:**
-11. Check if the project's `CLAUDE.md` contains a `## TODO System` section.
-    - If missing entirely: append the TODO System section (same content as the `init` command writes).
-    - If present but outdated (doesn't match the current template): replace the `## TODO System` section with the latest version, preserving all other CLAUDE.md content.
-    - If present and current: no changes needed.
+**Ensure both agents' project guidance is up to date:**
+11. Read `templates/AGENT-TODO.md` and ensure its TODO System section appears in both `CLAUDE.md` and `AGENTS.md`, following the same preservation and deduplication rules as `init`. Do this even if the user declines task auto-fixes: adding Codex guidance does not require rewriting existing tasks.
 
 ### `add` - Add a TODO Item
 
@@ -168,7 +157,7 @@ Omit fields that don't apply (don't include empty fields).
 
 ### `done` - Complete a TODO Item (or Step)
 
-**Step completion** — If `$ARGUMENTS` matches `step [text]`:
+**Step completion** — If the arguments after `done` match `step [text]`:
 1. Find the Active task containing a step whose title matches `[text]` (partial match ok, ask if ambiguous).
 2. Toggle that step to `[x]` in TODO.md.
 3. Show updated progress (e.g. "3/5 steps complete").
@@ -176,13 +165,13 @@ Omit fields that don't apply (don't include empty fields).
 5. If yes, continue with the full resolution flow below.
 
 **Task completion** — Otherwise:
-1. Identify the item. If `$ARGUMENTS` after "done" is ambiguous, list matching items and ask.
+1. Identify the item. If the arguments after "done" are ambiguous, list matching items and ask.
 2. If the item has steps with incomplete entries, warn: "This task has N incomplete steps. Mark as resolved anyway?" If the user declines, stop.
 3. Ask for a brief resolution note (what was done).
 4. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]` to the item.
 5. If the change is user-visible (features, fixes, UX changes — not internal refactors, chores, tests, or CI), also add `- **Changelog**: [one consumer-facing sentence]`. Write it in consumer speak: describe the benefit in plain language ("You can now move tasks between branches by right-clicking them", "Fixed an issue where the sidebar forgot your selection"). Present tense, no file names, no code identifiers, no internal jargon. Show the line alongside the resolution so the user can adjust it. Skip silently for internal-only work.
 6. Check TODORULES.md archive config:
-   - If `archive: true`: Move the item to the archive file (default `DONE.md`). Create the file from template if it doesn't exist.
+   - If `archive: true`: Move the item to the archive file (default `DONE.md`). Create the file from `templates/DONE.md` if it doesn't exist.
    - If `archive: false`: Move the item to the `## Resolved` section at the bottom of TODO.md.
 7. Check referenced files for related `// TODO:` comments. If found, offer to remove them.
 
@@ -190,7 +179,7 @@ Omit fields that don't apply (don't include empty fields).
 
 Move an item directly to a specific status, handling required fields for the target.
 
-1. Parse `$ARGUMENTS` after "move". Expect a pattern like `move [item] [status]` or `move [item] to [status]`.
+1. Parse the arguments after "move". Expect a pattern like `move [item] [status]` or `move [item] to [status]`.
    - `[item]` can be a partial title match, item number, or keyword.
    - `[status]` must be one of: `pending`, `queued`, `active` (or `in-progress`), `blocked` (or `stuck`), `resolved` (or `done`).
    - If either is ambiguous or missing, ask the user.
@@ -216,7 +205,7 @@ Status aliases (case-insensitive):
 
 Pick a specific item and begin working on it, with a full briefing.
 
-1. Parse `$ARGUMENTS` after "start". `[item]` can be a partial title match, item number, or keyword.
+1. Parse the arguments after "start". `[item]` can be a partial title match, item number, or keyword.
    - If ambiguous or missing, list Queued and Pending items and ask which one.
 2. Identify the item in TODO.md. If multiple items match, list them and ask.
 3. **Check dependencies before proceeding:**
@@ -320,7 +309,7 @@ Show the consumer-facing changes accumulated since the last release.
 
 Write pending changelog entries to `CHANGELOG.md` and stamp the items.
 
-1. Determine the version from `$ARGUMENTS` (e.g. `release v0.3.0`). If missing, look at the newest `## ` heading in CHANGELOG.md, suggest the next patch bump, and ask.
+1. Determine the version from the arguments (e.g. `release v0.3.0`). If missing, look at the newest `## ` heading in CHANGELOG.md, suggest the next patch bump, and ask.
 2. Scope by branch exactly as in `changelog` (user-named branch, else mainline/unscoped).
 3. Gather pending entries (Changelog set, no Released). If there are none, say so and stop.
 4. Show the entries grouped New/Fixed and confirm with the user.
@@ -343,7 +332,7 @@ Write pending changelog entries to `CHANGELOG.md` and stamp the items.
 Open the TODO dashboard in the browser, starting the dev server if needed.
 
 1. Read `~/.atlas-todo/dashboard-path` to find the dashboard directory.
-   - If the file doesn't exist, check if `~/.claude/skills/todo/dashboard/` exists as a fallback.
+   - If the file doesn't exist, check for `dashboard/` beside this loaded `SKILL.md` as a fallback.
    - If neither exists, tell the user: "Dashboard path not configured. Run `./install.sh` from the TODO repo to set it up."
 2. Check ports 3000-3009 for an existing TODO dashboard:
    - For each port, try: `curl -s http://localhost:<port>/api/projects`
@@ -360,7 +349,7 @@ Open the TODO dashboard in the browser, starting the dev server if needed.
 
 ### `scan` - Find Inline TODOs
 
-1. Use Grep to search for `// TODO:`, `# TODO:`, `<!-- TODO:`, and `// FIXME:` patterns across the codebase.
+1. Use the host search tool (e.g. `rg` or Grep) to search for `// TODO:`, `# TODO:`, `<!-- TODO:`, and `// FIXME:` patterns across the codebase.
 2. Exclude `node_modules`, `.git`, `dist`, `build`, `.next`, `vendor` directories.
 3. For each found comment:
    - Show the file, line number, and comment text.
@@ -370,7 +359,7 @@ Open the TODO dashboard in the browser, starting the dev server if needed.
 
 ### `help` - Show Available Commands
 
-Display this quick reference:
+Display this quick reference using the current host’s invocation prefix (`$todo` in Codex, `/todo` in Claude Code):
 
 ```
 /todo                       Show status overview (same as /todo status)
@@ -379,7 +368,7 @@ Display this quick reference:
 /todo done step [text]      Mark a step as complete on the active task
 /todo move [item] [status]  Move an item to any status directly
 /todo start [item]          Start working on a specific task (with briefing)
-/todo next                  Pick the highest-priority Ready item to work on
+/todo next                  Pick the highest-priority Queued item to work on
 /todo stuck [item]          Mark an item as blocked with a reason
 /todo status                Overview of all items by status
 /todo scan                  Find inline // TODO comments and sync with TODO.md
@@ -392,7 +381,7 @@ Display this quick reference:
 
 Updating the skill:
   After pulling updates from the todo skill repo, run ./install.sh
-  to sync the latest version to ~/.claude/skills/todo/
+  to sync the latest version to ~/.claude/skills/todo/ and ~/.agents/skills/todo/
 ```
 
 ## Activity Logging
@@ -443,7 +432,7 @@ When editing TODO.md:
 ## Validation
 
 Before writing any todo item, verify:
-- [ ] File references point to real files (use Glob to check).
+- [ ] File references point to real files (check with the host file or search tools).
 - [ ] Title is imperative mood ("Fix", "Add", "Refactor", not "Fixing", "Added").
 - [ ] Priority is one of the valid levels.
 - [ ] Category matches the project's TODORULES.md list.

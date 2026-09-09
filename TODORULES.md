@@ -1,6 +1,6 @@
 # TODO Rules
 
-Rules and configuration for this project's TODO system. Claude reads this file when managing TODO.md via the `/todo` skill.
+Rules and configuration for this project's TODO system. Claude Code and Codex read this file when managing TODO.md via the `todo` skill (`/todo` in Claude Code, `$todo` in Codex).
 
 ---
 
@@ -28,10 +28,14 @@ Rules and configuration for this project's TODO system. Claude reads this file w
 
 | Field            | Purpose                                    |
 | :--------------- | :----------------------------------------- |
-| **Dependencies** | Other TODO items this depends on              |
+| **Branch**       | Git branch this item is scoped to (e.g. a release branch like `training-beta`). Absent = mainline work ("main" in the dashboard). Only scope items that target a non-default branch. |
+| **Dependencies** | Comma-separated titles of other TODO items this depends on. The skill checks these before starting work. |
+| **Steps**        | Checklist of sub-tasks or milestones. Each step is `- [ ] title` (pending) or `- [x] title` (done). The skill tracks progress and suggests resolving the parent when all steps complete. |
 | **Started**      | Date work began (auto-set on Active)          |
 | **Completed**    | Date finished (auto-set on Resolved)          |
 | **Resolution**   | What was done to resolve (auto-set on Resolved)|
+| **Changelog**    | One consumer-facing sentence describing the change for release notes (set on resolve for user-visible work). Plain language, no jargon or file names. |
+| **Released**     | Version this item shipped in (auto-set by the skill's `release` command or the dashboard's Cut Release). Absent = not yet released. |
 | **Blocked**      | Reason for being blocked (required on Blocked) |
 | **Added**        | Date item was created                          |
 
@@ -82,7 +86,7 @@ Use one or more of these tags. Add project-specific categories below the default
 
 | Category        | When to use                                        |
 | :-------------- | :------------------------------------------------- |
-| `Skill`         | The /todo Claude Code skill (SKILL.md, templates)  |
+| `Skill`         | The shared TODO skill for Claude Code and Codex (SKILL.md, templates) |
 | `Dashboard`     | The Next.js task monitor web UI                    |
 | `Parser`        | TODO.md/DONE.md parsing logic                      |
 
@@ -92,7 +96,7 @@ Use one or more of these tags. Add project-specific categories below the default
 
 1. **File references must be real paths.** Verify files exist before adding. Use relative paths from project root with line numbers: `` `src/components/Button.tsx:42` ``.
 
-2. **One item per task.** If a task has multiple steps, either break into separate items or use a checklist within the description.
+2. **One item per task.** If a task has multiple steps, use the **Steps** field to track them as a checklist. Break into separate items only if the steps are independently trackable work.
 
 3. **Keep descriptions actionable.** Say what needs to happen, not just what's wrong. Details go in Context/Code fields.
 

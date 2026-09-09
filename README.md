@@ -1,10 +1,10 @@
 # TODO
 
-A structured TODO skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that turns Claude into a project task manager. Instead of messy checklists or scattered notes, every task gets documented with enforced standards — priority, category, file references, context, and acceptance criteria.
+A structured TODO skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://developers.openai.com/codex/skills/) that gives either agent a shared project task manager. Every task gets documented with enforced standards — priority, category, file references, context, and acceptance criteria.
 
 ## Why
 
-Claude is great at writing code but has no memory between sessions. Tasks get lost, context disappears, and you end up re-explaining what needs to happen. TODO gives every project a structured `TODO.md` that Claude reads automatically, so it always knows what's in progress, what's blocked, and what to work on next.
+When you switch sessions or coding agents, task context can get lost. TODO gives every project a structured `TODO.md` and project instructions so Claude Code and Codex can pick up what's in progress, what's blocked, and what to work on next.
 
 - Tasks are documented well enough that any session can pick them up
 - Bugs require file references and root cause context
@@ -19,24 +19,40 @@ cd TODO
 ./install.sh
 ```
 
-This copies the skill to `~/.claude/skills/todo/` where Claude Code picks it up globally.
+This installs the shared skill and templates globally for both agents:
+
+- Claude Code: `~/.claude/skills/todo/`
+- Codex: `~/.agents/skills/todo/`
+
+To install for just one agent, use `./install.sh --claude` or `./install.sh --codex`. You can run the installer from any directory. For a staged installation, `--prefix DIR` uses that directory in place of your home directory, including for `.atlas-todo` configuration.
+
+The workflow comes from one `SKILL.md`. The Codex installation omits only Claude-specific frontmatter (`argument-hint` and `allowed-tools`). If a newly installed skill doesn't appear, restart the agent.
 
 ## Setup in a Project
 
-Open Claude Code in any project and run:
+Open either agent in your project and run:
 
-```
-/todo init
+```text
+Claude Code: /todo init
+Codex:       $todo init
 ```
 
-This creates three things in your project:
+This sets up:
 - **`TODO.md`** — your task tracker
 - **`TODORULES.md`** — rules and categories (customize this for your project)
-- **`CLAUDE.md` section** — so new Claude sessions know the system exists
+- **`CLAUDE.md` and `AGENTS.md` sections** — so both agents know the system exists
 
-If you already have a `TODO.md`, init will migrate it — parsing your existing items into the structured format.
+If you have an unstructured `TODO.md`, init migrates it. If the project already uses this system, init preserves the tasks and rules and adds or updates the agent guidance.
+
+### Existing Claude Code Projects
+
+After running the updated installer, use `$todo init` in Codex to add the missing guidance to an existing TODO project. Use `$todo update` if you also want to refresh the rules and audit tasks. Both commands preserve unrelated content in `CLAUDE.md` and `AGENTS.md`.
+
+You can add a task with Claude Code, start it with Codex, and complete it with either agent. Both use the same `TODO.md`, `TODORULES.md`, archive, and activity log, and the existing dashboard shows both agents' changes. For a direct handoff, open the same project checkout; separate git worktrees have separate task files.
 
 ## Commands
+
+The examples below use Claude Code's `/todo` prefix. In Codex use `$todo` with the same command and details, for example `$todo add Fix login timeout` or `$todo start Fix login timeout`. You can also select the skill with `/skills` in Codex CLI or the IDE extension.
 
 ```
 /todo                       Status overview
@@ -49,6 +65,8 @@ If you already have a `TODO.md`, init will migrate it — parsing your existing 
 /todo stuck [item]          Mark as blocked with a reason
 /todo status                Full overview by status
 /todo scan                  Find inline TODO/FIXME comments and sync them
+/todo changelog             Preview pending release notes
+/todo release [version]     Write release notes and stamp resolved items
 /todo dashboard             Launch the web dashboard in the browser
 /todo init                  Initialize or migrate TODO system
 /todo update                Pull latest templates and audit existing items
@@ -116,20 +134,22 @@ After pulling new versions of TODO:
 
 Then in each project that uses the skill:
 
-```
-/todo update
+```text
+Claude Code: /todo update
+Codex:       $todo update
 ```
 
-This refreshes `TODORULES.md` with the latest template (preserving your customizations) and audits existing items for compatibility.
+This refreshes `TODORULES.md` with the latest template (preserving your customizations), audits existing items for compatibility, and updates both agents' project guidance.
 
 ## Dashboard
 
 TODO includes a web dashboard for visualizing tasks across all your projects.
 
-The quickest way to launch it is from Claude Code:
+The quickest way to launch it is from either agent:
 
-```
-/todo dashboard
+```text
+Claude Code: /todo dashboard
+Codex:       $todo dashboard
 ```
 
 This starts the dev server (if not already running), finds a free port, and opens your browser. You can also start it manually:
@@ -140,7 +160,7 @@ bun install
 bun dev
 ```
 
-The dashboard reads `TODO.md` files directly from disk — no server or database required.
+The dashboard's local Next.js server reads `TODO.md` files directly from disk — no database or agent-specific integration required.
 
 **Features:**
 - Add projects by path — validates the directory and auto-detects the project name from `TODO.md`

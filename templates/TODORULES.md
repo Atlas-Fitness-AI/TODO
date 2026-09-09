@@ -1,6 +1,6 @@
 # TODO Rules
 
-Rules and configuration for this project's TODO system. Claude reads this file when managing TODO.md via the `/todo` skill.
+Rules and configuration for this project's TODO system. Claude Code and Codex read this file when managing TODO.md via the `todo` skill (`/todo` in Claude Code, `$todo` in Codex).
 
 ---
 
@@ -35,7 +35,7 @@ Rules and configuration for this project's TODO system. Claude reads this file w
 | **Completed**    | Date finished (auto-set on Resolved)          |
 | **Resolution**   | What was done to resolve (auto-set on Resolved)|
 | **Changelog**    | One consumer-facing sentence describing the change for release notes (set on resolve for user-visible work). Plain language, no jargon or file names. |
-| **Released**     | Version this item shipped in (auto-set by `/todo release` or the dashboard's Cut Release). Absent = not yet released. |
+| **Released**     | Version this item shipped in (auto-set by the skill's `release` command or the dashboard's Cut Release). Absent = not yet released. |
 | **Blocked**      | Reason for being blocked (required on Blocked) |
 | **Added**        | Date item was created                          |
 
