@@ -5,7 +5,7 @@ import { homedir } from "os"
 import type { AppConfig, ParsedProject, ProjectConfig } from "./types"
 import { parseTodoMarkdown, parseDoneMarkdown } from "./parser"
 
-const CONFIG_PATH = join(homedir(), ".claudedo", "config.json")
+const CONFIG_PATH = join(homedir(), ".atlas-todo", "config.json")
 
 export async function loadConfig(): Promise<AppConfig> {
   try {

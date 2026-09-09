@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "ClaudeDo",
+  title: "TODO",
   description: "Task dashboard for Claude Code TODO skill",
 }
 

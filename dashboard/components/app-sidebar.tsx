@@ -172,7 +172,7 @@ export function AppSidebar({
           <div className="flex items-center gap-2">
             <div className="size-2 bg-primary pulse-dot" />
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary glow-rose">
-              ClaudeDo
+              TODO
             </div>
           </div>
           <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
@@ -293,7 +293,7 @@ export function AppSidebar({
                     <span className="text-primary">&gt;</span> no projects loaded
                     <br />
                     <span className="text-muted-foreground/50 mt-1 block">
-                      cfg: ~/.claudedo/config.json
+                      cfg: ~/.atlas-todo/config.json
                     </span>
                   </div>
                 )}

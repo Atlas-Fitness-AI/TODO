@@ -340,12 +340,12 @@ Write pending changelog entries to `CHANGELOG.md` and stamp the items.
 
 ### `dashboard` - Launch Web Dashboard
 
-Open the ClaudeDo dashboard in the browser, starting the dev server if needed.
+Open the TODO dashboard in the browser, starting the dev server if needed.
 
-1. Read `~/.claudedo/dashboard-path` to find the dashboard directory.
+1. Read `~/.atlas-todo/dashboard-path` to find the dashboard directory.
    - If the file doesn't exist, check if `~/.claude/skills/todo/dashboard/` exists as a fallback.
-   - If neither exists, tell the user: "Dashboard path not configured. Run `./install.sh` from the ClaudeDo repo to set it up."
-2. Check ports 3000-3009 for an existing ClaudeDo dashboard:
+   - If neither exists, tell the user: "Dashboard path not configured. Run `./install.sh` from the TODO repo to set it up."
+2. Check ports 3000-3009 for an existing TODO dashboard:
    - For each port, try: `curl -s http://localhost:<port>/api/projects`
    - If it returns valid JSON (an array), the dashboard is already running on that port — skip to step 4 using that port.
 3. If no existing dashboard found, start the dev server:

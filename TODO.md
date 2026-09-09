@@ -1,6 +1,6 @@
 # TODO
 
-> Project: ClaudeDo
+> Project: TODO
 
 ---
 

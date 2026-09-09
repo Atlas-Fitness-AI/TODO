@@ -1,10 +1,10 @@
-# ClaudeDo
+# TODO
 
 A structured TODO skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that turns Claude into a project task manager. Instead of messy checklists or scattered notes, every task gets documented with enforced standards — priority, category, file references, context, and acceptance criteria.
 
 ## Why
 
-Claude is great at writing code but has no memory between sessions. Tasks get lost, context disappears, and you end up re-explaining what needs to happen. ClaudeDo gives every project a structured `TODO.md` that Claude reads automatically, so it always knows what's in progress, what's blocked, and what to work on next.
+Claude is great at writing code but has no memory between sessions. Tasks get lost, context disappears, and you end up re-explaining what needs to happen. TODO gives every project a structured `TODO.md` that Claude reads automatically, so it always knows what's in progress, what's blocked, and what to work on next.
 
 - Tasks are documented well enough that any session can pick them up
 - Bugs require file references and root cause context
@@ -14,8 +14,8 @@ Claude is great at writing code but has no memory between sessions. Tasks get lo
 ## Install
 
 ```bash
-git clone https://github.com/RouxCater/ClaudeDo.git
-cd ClaudeDo
+git clone https://github.com/Atlas-Fitness-AI/TODO.git
+cd TODO
 ./install.sh
 ```
 
@@ -108,7 +108,7 @@ Completed items move to `DONE.md` by default, keeping `TODO.md` clean. This is c
 
 ## Updating
 
-After pulling new versions of ClaudeDo:
+After pulling new versions of TODO:
 
 ```bash
 ./install.sh
@@ -124,7 +124,7 @@ This refreshes `TODORULES.md` with the latest template (preserving your customiz
 
 ## Dashboard
 
-ClaudeDo includes a web dashboard for visualizing tasks across all your projects.
+TODO includes a web dashboard for visualizing tasks across all your projects.
 
 The quickest way to launch it is from Claude Code:
 
@@ -160,7 +160,7 @@ The dashboard reads `TODO.md` files directly from disk — no server or database
 - Backwards compatible with old status names (In Progress, Ready, Stuck, Backlog, Done)
 - Sci-fi aesthetic with spotlight card effects
 
-Projects are stored in `~/.claudedo/config.json`. You can add them via the "+" button in the sidebar or edit the file directly.
+Projects are stored in `~/.atlas-todo/config.json`. You can add them via the "+" button in the sidebar or edit the file directly.
 
 ## Customization
 
