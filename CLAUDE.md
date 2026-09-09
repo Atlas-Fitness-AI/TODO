@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClaudeDo is two things in one repo:
+TODO is two things in one repo:
 1. **`/todo` Claude Code skill** — a structured TODO system that Claude uses to manage tasks in any project (defined in `SKILL.md`, installed to `~/.claude/skills/todo/`)
 2. **Web dashboard** — a Next.js app in `dashboard/` that visualizes tasks across all projects
 
@@ -40,12 +40,13 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 - `app/page.tsx` — server component reads cookies + calls `loadAllProjects()` from disk, passes as props
 - `components/dashboard.tsx` — client component, wraps data in `useProjectPolling()` for auto-refresh every 3s
 - `lib/parser.ts` — regex-based parser converts TODO.md/DONE.md markdown into typed `TodoSection[]`/`TodoItem[]`. Handles multi-line `Steps` field (checklist of sub-tasks). Includes `STATUS_ALIASES` mapping old names (In Progress, Ready, Stuck, Backlog, Done) to new canonical names for backwards compatibility with projects that haven't migrated yet.
-- `lib/projects.ts` — reads `~/.claudedo/config.json` for project paths, loads and parses each project's TODO.md + DONE.md
+- `lib/projects.ts` — reads `~/.atlas-todo/config.json` for project paths, loads and parses each project's TODO.md + DONE.md
 
 **API routes:**
-- `app/api/projects/route.ts` — GET (list projects + activity), PUT (validate path), POST (add), PATCH (rename), DELETE (remove). All operate on `~/.claudedo/config.json`.
-- `app/api/tasks/route.ts` — POST (add task with optional steps), PATCH (move status, change priority, or toggle step), DELETE (delete task, clear status group, or clear activity log). Reads/writes TODO.md via parser + serializer, logs events to `.todo-activity.json`.
+- `app/api/projects/route.ts` — GET (list projects + activity), PUT (validate path), POST (add), PATCH (rename), DELETE (remove). All operate on `~/.atlas-todo/config.json`.
+- `app/api/tasks/route.ts` — POST (add task with optional steps), PATCH (move status, change priority, toggle step, or move to a branch via `newBranch`; null/empty = main), DELETE (delete task, clear status group, or clear activity log). Reads/writes TODO.md via parser + serializer, logs events to `.todo-activity.json`.
 - `app/api/open/route.ts` — POST to open a project path in Finder or Terminal (validates path is a registered project)
+- `app/api/release/route.ts` — POST to cut a release: gathers resolved items with a `Changelog` field and no `Released` field (branch-scoped), prepends a version section to the project's CHANGELOG.md, and stamps every in-scope resolved item with `Released: <version>` (TODO.md via serializer, DONE.md via targeted field upsert in `lib/changelog.ts`)
 
 **Key patterns:**
 - Cookie-based state persistence (sidebar, selected project, tab, theme) — read on server, passed as `default*` props, written on client via `document.cookie`
@@ -58,8 +59,8 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 
 ### Config & Storage
 
-- **Project registry**: `~/.claudedo/config.json` — array of `{ name, path }` entries
-- **Dashboard path**: `~/.claudedo/dashboard-path` — used by `/todo dashboard` to locate the dev server
+- **Project registry**: `~/.atlas-todo/config.json` — array of `{ name, path }` entries
+- **Dashboard path**: `~/.atlas-todo/dashboard-path` — used by `/todo dashboard` to locate the dev server
 - **Skill install location**: `~/.claude/skills/todo/`
 - **Task data**: each project's `TODO.md` + `DONE.md` (markdown, parsed on read, no database)
 - **Activity log**: each project's `.todo-activity.json` — event log written by the `/todo` skill on every action, read by the dashboard for the activity feed (newest-first, max 50 events)
@@ -67,6 +68,8 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 ## TODO System
 
 This project uses a structured TODO system. Tasks, bugs, and features are tracked in `TODO.md` with rules defined in `TODORULES.md`.
+
+**Changelog system:** resolved items may carry `- **Changelog**: <consumer-facing sentence>` (written by the skill on `done`, or from the dashboard's Release Notes dialog on the Resolved tab) and `- **Released**: <version>` (stamped when a release is cut). Pending release notes = changelog set, no release stamp. The dialog and `/todo changelog` / `/todo release` group entries into New/Fixed (bug-ish category or "Fix…" title → Fixed).
 
 Use the `/todo` skill to manage items:
 - `/todo` or `/todo status` — overview of all items

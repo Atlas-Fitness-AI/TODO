@@ -22,6 +22,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 
 const PRIORITY_CONFIG: Record<
@@ -30,28 +32,28 @@ const PRIORITY_CONFIG: Record<
 > = {
   Critical: {
     label: "CRIT",
-    color: "text-red-400",
+    color: "text-status-blocked",
   },
   High: {
     label: "HIGH",
-    color: "text-orange-400",
+    color: "text-priority-high",
   },
   Medium: {
     label: "MED",
-    color: "text-yellow-400",
+    color: "text-status-queued",
   },
   Low: {
     label: "LOW",
-    color: "text-zinc-500",
+    color: "text-muted-foreground",
   },
 }
 
 const STATUS_BORDER_COLOR: Record<Status, string> = {
-  Active: "oklch(0.707 0.165 254.624)",
-  Blocked: "oklch(0.704 0.191 22.216)",
-  Queued: "oklch(0.852 0.199 91.936)",
-  Pending: "oklch(0.552 0.016 285.938)",
-  Resolved: "oklch(0.723 0.191 149.579)",
+  Active: "var(--status-active)",
+  Blocked: "var(--status-blocked)",
+  Queued: "var(--status-queued)",
+  Pending: "var(--muted-foreground)",
+  Resolved: "var(--status-resolved)",
 }
 
 const HIDDEN_MESSAGES = [
@@ -93,13 +95,18 @@ interface TodoCardProps {
   onMoved?: () => void
   focused?: boolean
   resolvedTitles?: Set<string>
+  /** Known branch names in this project (for the "Move to branch" submenu) */
+  branches?: string[]
 }
 
-export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles }: TodoCardProps) {
+export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles, branches = [] }: TodoCardProps) {
   const priority = PRIORITY_CONFIG[item.priority]
   const hiddenMessage = getStableMessage(item.title)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [stepsExpanded, setStepsExpanded] = useState(false)
+  const [branchDialogOpen, setBranchDialogOpen] = useState(false)
+  const [newBranchName, setNewBranchName] = useState("")
+  const [branchSubmitting, setBranchSubmitting] = useState(false)
 
   async function handleDelete() {
     if (!projectPath) return
@@ -165,6 +172,46 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
       }
     } catch {
       toast.error("Failed to toggle step")
+    }
+  }
+
+  // Move the task to another branch directory. null = unscoped ("main").
+  async function handleBranch(newBranch: string | null): Promise<boolean> {
+    if (!projectPath) return false
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectPath,
+          title: item.title,
+          newBranch,
+        }),
+      })
+      if (res.ok) {
+        toast.success(`Moved to ${newBranch ?? "main"}`)
+        onMoved?.()
+        return true
+      }
+      const data = await res.json()
+      toast.error(data.error || "Failed to move task")
+      return false
+    } catch {
+      toast.error("Failed to move task")
+      return false
+    }
+  }
+
+  async function handleNewBranchSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const name = newBranchName.trim()
+    if (!name || branchSubmitting) return
+    setBranchSubmitting(true)
+    const ok = await handleBranch(name)
+    setBranchSubmitting(false)
+    if (ok) {
+      setBranchDialogOpen(false)
+      setNewBranchName("")
     }
   }
 
@@ -266,8 +313,8 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         {/* Blocked */}
         {item.blocked && (
           <div className="flex items-center gap-1.5">
-            <div className="size-1.5 bg-red-400 pulse-dot" />
-            <span className="text-xs text-red-400 font-mono">
+            <div className="size-1.5 bg-status-blocked pulse-dot" />
+            <span className="text-xs text-status-blocked font-mono">
               {item.blocked}
             </span>
           </div>
@@ -276,10 +323,10 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         {/* File references */}
         {item.files && item.files.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {item.files.map((file) => (
+            {item.files.map((file, i) => (
               <code
-                key={file}
-                className="text-[11px] font-mono text-primary/80 bg-primary/5 border border-primary/10 px-2 py-0.5"
+                key={`${file}-${i}`}
+                className="text-[11px] font-mono text-primary/80 bg-primary/5 border border-primary/10 px-2 py-0.5 break-all max-w-full"
               >
                 {file}
               </code>
@@ -294,15 +341,15 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
               depends on
             </span>
             <div className="flex flex-wrap gap-2 mt-1">
-              {item.dependencies.split(",").map((dep) => dep.trim()).filter(Boolean).map((dep) => {
+              {item.dependencies.split(",").map((dep) => dep.trim()).filter(Boolean).map((dep, i) => {
                 const isResolved = resolvedTitles?.has(dep) ?? false
                 return (
                   <code
-                    key={dep}
+                    key={`${dep}-${i}`}
                     className={`text-[11px] font-mono px-2 py-0.5 ${
                       isResolved
-                        ? "text-green-400/80 bg-green-400/5 border border-green-400/10"
-                        : "text-yellow-400/80 bg-yellow-400/5 border border-yellow-400/10"
+                        ? "text-status-resolved/80 bg-status-resolved/5 border border-status-resolved/10"
+                        : "text-status-queued/80 bg-status-queued/5 border border-status-queued/10"
                     }`}
                   >
                     {isResolved ? "✓" : "⧖"} {dep}
@@ -348,7 +395,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
                 </svg>
               </button>
               {stepsExpanded && (
-                <div className="overflow-x-auto flex flex-nowrap gap-2 py-2 mt-1">
+                <div className="flex flex-wrap gap-2 py-2 mt-1">
                   {item.steps.map((step, i) => (
                     <button
                       key={i}
@@ -357,27 +404,27 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
                         e.stopPropagation()
                         handleToggleStep(i)
                       }}
-                      className={`shrink-0 flex items-center gap-1.5 border px-2 py-1 transition-colors hover:border-primary/30 ${
+                      className={`flex items-center gap-1.5 border px-2 py-1 transition-colors hover:border-primary/30 ${
                         step.completed
-                          ? "border-green-400/20 bg-green-400/5"
+                          ? "border-status-resolved/20 bg-status-resolved/5"
                           : "border-border/50 bg-card/30"
                       }`}
                     >
                       <span
                         className={`size-3 shrink-0 border flex items-center justify-center ${
                           step.completed
-                            ? "border-green-400/50 bg-green-400/20"
+                            ? "border-status-resolved/50 bg-status-resolved/20"
                             : "border-border"
                         }`}
                       >
                         {step.completed && (
                           <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                            <path d="M1.5 4L3 5.5L6.5 2" stroke="currentColor" strokeWidth="1.5" className="text-green-400" />
+                            <path d="M1.5 4L3 5.5L6.5 2" stroke="currentColor" strokeWidth="1.5" className="text-status-resolved" />
                           </svg>
                         )}
                       </span>
                       <span
-                        className={`text-[11px] font-mono whitespace-nowrap ${
+                        className={`text-[11px] font-mono text-left ${
                           step.completed
                             ? "line-through text-muted-foreground/40"
                             : "text-foreground/80"
@@ -411,6 +458,9 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
             {item.added && <span>added {item.added}</span>}
             {item.started && <span>started {item.started}</span>}
             {item.completed && <span>done {item.completed}</span>}
+            {item.released && (
+              <span className="text-status-resolved/80">▲ {item.released}</span>
+            )}
           </div>
         )}
       </div>
@@ -439,6 +489,34 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
               </ContextMenuSubContent>
             </ContextMenuSub>
             <ContextMenuSub>
+              <ContextMenuSubTrigger>Move to branch</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {item.branch && (
+                  <ContextMenuItem onClick={() => handleBranch(null)}>
+                    main
+                  </ContextMenuItem>
+                )}
+                {branches
+                  .filter((b) => b !== item.branch)
+                  .map((b) => (
+                    <ContextMenuItem key={b} onClick={() => handleBranch(b)}>
+                      {b}
+                    </ContextMenuItem>
+                  ))}
+                {(item.branch || branches.some((b) => b !== item.branch)) && (
+                  <ContextMenuSeparator />
+                )}
+                <ContextMenuItem
+                  onClick={() => {
+                    setNewBranchName("")
+                    setBranchDialogOpen(true)
+                  }}
+                >
+                  New branch…
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSub>
               <ContextMenuSubTrigger>Set priority</ContextMenuSubTrigger>
               <ContextMenuSubContent>
                 {ALL_PRIORITIES.filter((p) => p !== item.priority).map((p) => (
@@ -459,6 +537,47 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
           </>
         )}
       </ContextMenuContent>
+
+      <Dialog open={branchDialogOpen} onOpenChange={setBranchDialogOpen}>
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
+          <form onSubmit={handleNewBranchSubmit}>
+            <DialogHeader>
+              <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
+                <span className="text-accent-special">&gt;</span> Move to Branch
+              </DialogTitle>
+              <DialogDescription>
+                Scope <span className="text-foreground font-medium">{item.title}</span> to a new branch.
+                Currently on <span className="text-foreground font-medium">{item.branch ?? "main"}</span>.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-1.5 py-4">
+              <Label
+                htmlFor={`branch-name-${item.title}`}
+                className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
+              >
+                Branch
+              </Label>
+              <Input
+                id={`branch-name-${item.title}`}
+                autoFocus
+                placeholder="training-beta"
+                value={newBranchName}
+                onChange={(e) => setNewBranchName(e.target.value)}
+                className="font-mono text-[11px]"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={!newBranchName.trim() || branchSubmitting}
+                className="uppercase tracking-[0.15em] font-mono text-[10px]"
+              >
+                {branchSubmitting ? "Moving…" : "Move"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">

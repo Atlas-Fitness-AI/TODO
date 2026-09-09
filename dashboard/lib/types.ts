@@ -11,6 +11,7 @@ export interface TodoItem {
   title: string
   priority: Priority
   category: string[]
+  branch?: string
   description?: string
   files?: string[]
   context?: string
@@ -23,6 +24,8 @@ export interface TodoItem {
   completed?: string
   resolution?: string
   blocked?: string
+  changelog?: string
+  released?: string
   status: Status
 }
 

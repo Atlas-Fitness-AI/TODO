@@ -5,7 +5,7 @@ import { homedir } from "os"
 import { loadAllProjects } from "@/lib/projects"
 import { readActivityLog } from "@/lib/activity-log"
 
-const CONFIG_DIR = join(homedir(), ".claudedo")
+const CONFIG_DIR = join(homedir(), ".atlas-todo")
 const CONFIG_PATH = join(CONFIG_DIR, "config.json")
 
 interface ProjectConfig {

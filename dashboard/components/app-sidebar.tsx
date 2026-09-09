@@ -13,6 +13,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   ContextMenu,
@@ -40,14 +41,49 @@ interface AppSidebarProps {
   projects: ParsedProject[]
   selectedIndex: number | null
   onSelect: (index: number) => void
+  selectedBranch: string | null
+  onSelectBranch: (branch: string | null) => void
+}
+
+function BranchIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className="shrink-0">
+      <circle cx="2" cy="2" r="1.3" stroke="currentColor" strokeWidth="1" />
+      <circle cx="2" cy="7" r="1.3" stroke="currentColor" strokeWidth="1" />
+      <circle cx="7" cy="2" r="1.3" stroke="currentColor" strokeWidth="1" />
+      <path d="M2 3.3v2.4M3.3 2h2.4" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  )
+}
+
+// Distinct branch names across a project's tasks, plus per-branch active counts
+function getBranchInfo(project: ParsedProject): { branches: string[]; counts: Record<string, number>; mainCount: number } {
+  const branches = new Set<string>()
+  const counts: Record<string, number> = {}
+  let mainCount = 0
+  for (const section of project.sections) {
+    for (const item of section.items) {
+      if (item.branch) branches.add(item.branch)
+      if (section.status === "Resolved") continue
+      if (item.branch) {
+        counts[item.branch] = (counts[item.branch] ?? 0) + 1
+      } else {
+        mainCount++
+      }
+    }
+  }
+  return { branches: [...branches].sort(), counts, mainCount }
 }
 
 export function AppSidebar({
   projects,
   selectedIndex,
   onSelect,
+  selectedBranch,
+  onSelectBranch,
 }: AppSidebarProps) {
   const router = useRouter()
+  const { isMobile, setOpenMobile } = useSidebar()
   const [removeTarget, setRemoveTarget] = useState<{
     path: string
     name: string
@@ -59,6 +95,7 @@ export function AppSidebar({
   } | null>(null)
   const [renameName, setRenameName] = useState("")
   const [renaming, setRenaming] = useState(false)
+  const [branchesCollapsed, setBranchesCollapsed] = useState(false)
 
   async function handleConfirmRename() {
     if (!renameTarget || !renameName.trim()) return
@@ -135,7 +172,7 @@ export function AppSidebar({
           <div className="flex items-center gap-2">
             <div className="size-2 bg-primary pulse-dot" />
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary glow-rose">
-              ClaudeDo
+              TODO
             </div>
           </div>
           <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
@@ -154,13 +191,24 @@ export function AppSidebar({
               <SidebarMenu className="gap-1">
                 {projects.map((project, index) => {
                   const count = getActiveItemCount(project.sections)
+                  const { branches, counts, mainCount } = getBranchInfo(project)
+                  const isSelected = selectedIndex === index
                   return (
                     <ContextMenu key={project.path}>
                       <ContextMenuTrigger className="w-full">
                         <SidebarMenuItem>
                           <SidebarMenuButton
                             isActive={selectedIndex === index}
-                            onClick={() => onSelect(index)}
+                            onClick={() => {
+                              if (isSelected) {
+                                // Re-clicking the selected project toggles its branch list
+                                if (branches.length > 0) setBranchesCollapsed((v) => !v)
+                                return
+                              }
+                              onSelect(index)
+                              setBranchesCollapsed(false)
+                              if (isMobile) setOpenMobile(false)
+                            }}
                           >
                             <span className="text-[10px] text-muted-foreground font-mono">
                               {String(index).padStart(2, "0")}
@@ -176,6 +224,34 @@ export function AppSidebar({
                             [{count}]
                           </SidebarMenuBadge>
                         </SidebarMenuItem>
+                        {isSelected && branches.length > 0 && !branchesCollapsed && (
+                          <div className="flex flex-col gap-0.5 mt-0.5 mb-1">
+                            {[null, ...branches].map((branch) => {
+                              const branchActive = selectedBranch === branch
+                              const branchCount = branch === null ? mainCount : counts[branch] ?? 0
+                              return (
+                                <button
+                                  key={branch ?? "__main"}
+                                  onClick={() => {
+                                    onSelectBranch(branch)
+                                    if (isMobile) setOpenMobile(false)
+                                  }}
+                                  className={`flex items-center gap-2 pl-7 pr-2 py-1.5 text-left transition-colors ${
+                                    branchActive
+                                      ? "text-accent-special"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  <BranchIcon />
+                                  <span className="text-[11px] font-mono uppercase tracking-wider truncate flex-1">
+                                    {branch ?? "main"}
+                                  </span>
+                                  <span className="text-[11px] font-mono">[{branchCount}]</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem onClick={() => handleCopyPath(project.path)}>
@@ -217,7 +293,7 @@ export function AppSidebar({
                     <span className="text-primary">&gt;</span> no projects loaded
                     <br />
                     <span className="text-muted-foreground/50 mt-1 block">
-                      cfg: ~/.claudedo/config.json
+                      cfg: ~/.atlas-todo/config.json
                     </span>
                   </div>
                 )}

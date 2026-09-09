@@ -141,6 +141,7 @@ function parseItems(content: string, status: Status): TodoItem[] {
         priority,
         category,
         status,
+        ...(fields.branch && { branch: fields.branch }),
         ...(fields.description && { description: fields.description }),
         ...(files && files.length > 0 && { files }),
         ...(fields.context && { context: fields.context }),
@@ -153,6 +154,8 @@ function parseItems(content: string, status: Status): TodoItem[] {
         ...(fields.completed && { completed: fields.completed }),
         ...(fields.resolution && { resolution: fields.resolution }),
         ...(fields.blocked && { blocked: fields.blocked }),
+        ...(fields.changelog && { changelog: fields.changelog }),
+        ...(fields.released && { released: fields.released }),
       }
 
       items.push(item)
@@ -248,6 +251,7 @@ export function parseDoneMarkdown(content: string): TodoItem[] {
         priority,
         category,
         status: "Resolved",
+        ...(fields.branch && { branch: fields.branch }),
         ...(fields.description && { description: fields.description }),
         ...(files && files.length > 0 && { files }),
         ...(fields.context && { context: fields.context }),
@@ -257,6 +261,8 @@ export function parseDoneMarkdown(content: string): TodoItem[] {
         ...(fields.started && { started: fields.started }),
         ...(fields.completed && { completed: fields.completed }),
         ...(fields.resolution && { resolution: fields.resolution }),
+        ...(fields.changelog && { changelog: fields.changelog }),
+        ...(fields.released && { released: fields.released }),
       })
     } catch {
       // Skip malformed items
@@ -270,6 +276,7 @@ export function parseDoneMarkdown(content: string): TodoItem[] {
 const FIELD_ORDER = [
   "priority",
   "category",
+  "branch",
   "files",
   "description",
   "context",
@@ -281,6 +288,8 @@ const FIELD_ORDER = [
   "started",
   "completed",
   "resolution",
+  "changelog",
+  "released",
   "blocked",
 ] as const
 
@@ -294,6 +303,9 @@ function serializeItem(item: TodoItem): string {
         break
       case "category":
         if (item.category.length > 0) lines.push(`- **Category**: ${item.category.join(", ")}`)
+        break
+      case "branch":
+        if (item.branch) lines.push(`- **Branch**: ${item.branch}`)
         break
       case "files":
         if (item.files && item.files.length > 0)
@@ -333,6 +345,12 @@ function serializeItem(item: TodoItem): string {
         break
       case "resolution":
         if (item.resolution) lines.push(`- **Resolution**: ${item.resolution}`)
+        break
+      case "changelog":
+        if (item.changelog) lines.push(`- **Changelog**: ${item.changelog}`)
+        break
+      case "released":
+        if (item.released) lines.push(`- **Released**: ${item.released}`)
         break
       case "blocked":
         if (item.blocked) lines.push(`- **Blocked**: ${item.blocked}`)

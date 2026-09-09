@@ -7,28 +7,28 @@ const STATUS_CONFIG: Record<
 > = {
   Active: {
     label: "ACTIVE",
-    color: "text-blue-400",
-    dotColor: "bg-blue-400",
+    color: "text-status-active",
+    dotColor: "bg-status-active",
   },
   Blocked: {
     label: "BLOCKED",
-    color: "text-red-400",
-    dotColor: "bg-red-400",
+    color: "text-status-blocked",
+    dotColor: "bg-status-blocked",
   },
   Queued: {
     label: "QUEUED",
-    color: "text-yellow-400",
-    dotColor: "bg-yellow-400",
+    color: "text-status-queued",
+    dotColor: "bg-status-queued",
   },
   Pending: {
     label: "PENDING",
-    color: "text-zinc-500",
-    dotColor: "bg-zinc-500",
+    color: "text-muted-foreground",
+    dotColor: "bg-muted-foreground",
   },
   Resolved: {
     label: "RESOLVED",
-    color: "text-green-400",
-    dotColor: "bg-green-400",
+    color: "text-status-resolved",
+    dotColor: "bg-status-resolved",
   },
 }
 
@@ -38,7 +38,7 @@ interface StatusOverviewProps {
 
 export function StatusOverview({ sections }: StatusOverviewProps) {
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex gap-3 md:gap-4">
       {sections.map((section) => {
         const config = STATUS_CONFIG[section.status]
         const isActive = section.status === "Active"
@@ -46,7 +46,7 @@ export function StatusOverview({ sections }: StatusOverviewProps) {
           <TabsTrigger
             key={section.status}
             value={section.status}
-            className="!bg-transparent !border-transparent !p-0 !h-auto !rounded-none after:!bg-muted-foreground flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider cursor-pointer"
+            className="!bg-transparent !border-transparent !p-0 !h-auto !rounded-none after:!bg-muted-foreground flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider cursor-pointer shrink-0"
           >
             <div
               className={`size-1.5 ${config.dotColor} ${isActive ? "pulse-dot" : ""}`}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -37,9 +37,11 @@ interface AddTaskDialogProps {
   onAdded: () => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  branch?: string | null
+  knownBranches?: string[]
 }
 
-export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: controlledOpen, onOpenChange }: AddTaskDialogProps) {
+export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: controlledOpen, onOpenChange, branch, knownBranches = [] }: AddTaskDialogProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
   const setOpen = onOpenChange ?? setUncontrolledOpen
@@ -50,8 +52,14 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
   const [status, setStatus] = useState<Status>("Queued")
   const [selectedDeps, setSelectedDeps] = useState<Set<string>>(new Set())
   const [stepsText, setStepsText] = useState("")
+  const [branchText, setBranchText] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Prefill branch from the currently selected branch directory
+  useEffect(() => {
+    if (open) setBranchText(branch ?? "")
+  }, [open, branch])
 
   function reset() {
     setTitle("")
@@ -85,6 +93,7 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
             .filter(Boolean),
           description: description.trim() || undefined,
           status,
+          ...(branchText.trim() && { branch: branchText.trim() }),
           ...(selectedDeps.size > 0 && { dependencies: Array.from(selectedDeps).join(", ") }),
           ...(stepsText.trim() && {
             steps: stepsText
@@ -135,7 +144,7 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
           <rect x="0" y="4" width="10" height="2" fill="currentColor" />
         </svg>
       </DialogTrigger>
-      <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
+      <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm max-h-[90svh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
             <span className="text-primary glow-rose">&gt;</span> Add Task
@@ -229,6 +238,30 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
           </div>
           <div className="grid gap-1.5">
             <Label
+              htmlFor="task-branch"
+              className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
+            >
+              Branch{" "}
+              <span className="normal-case tracking-normal text-muted-foreground/50">
+                (optional, empty = main)
+              </span>
+            </Label>
+            <Input
+              id="task-branch"
+              placeholder="training-beta"
+              value={branchText}
+              onChange={(e) => setBranchText(e.target.value)}
+              className="font-mono text-[11px]"
+              list="task-branch-options"
+            />
+            <datalist id="task-branch-options">
+              {knownBranches.map((b) => (
+                <option key={b} value={b} />
+              ))}
+            </datalist>
+          </div>
+          <div className="grid gap-1.5">
+            <Label
               htmlFor="task-description"
               className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
             >
@@ -289,10 +322,10 @@ export function AddTaskDialog({ projectPath, existingTasks = [], onAdded, open: 
                     </span>
                     <span className="text-[11px] font-mono truncate">{task.title}</span>
                     <span className={`text-[9px] font-mono uppercase tracking-wider shrink-0 ml-auto ${
-                      task.status === "Active" ? "text-blue-400" :
-                      task.status === "Blocked" ? "text-red-400" :
-                      task.status === "Queued" ? "text-yellow-400" :
-                      "text-zinc-500"
+                      task.status === "Active" ? "text-status-active" :
+                      task.status === "Blocked" ? "text-status-blocked" :
+                      task.status === "Queued" ? "text-status-queued" :
+                      "text-muted-foreground"
                     }`}>
                       {task.status}
                     </span>

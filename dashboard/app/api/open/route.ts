@@ -5,7 +5,7 @@ import { readFile } from "fs/promises"
 import { join } from "path"
 import { homedir } from "os"
 
-const CONFIG_PATH = join(homedir(), ".claudedo", "config.json")
+const CONFIG_PATH = join(homedir(), ".atlas-todo", "config.json")
 
 async function isRegisteredProject(path: string): Promise<boolean> {
   try {
