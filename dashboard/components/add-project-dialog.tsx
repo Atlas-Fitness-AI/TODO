@@ -183,7 +183,7 @@ export function AddProjectDialog() {
               </div>
             )}
             {validated && !error && (
-              <div className="text-[10px] uppercase tracking-wider text-green-500 font-mono">
+              <div className="text-[10px] uppercase tracking-wider text-status-resolved font-mono">
                 path ok
               </div>
             )}

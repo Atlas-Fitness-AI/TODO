@@ -17,6 +17,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { AppSidebar } from "./app-sidebar"
 import { StatusOverview } from "./status-overview"
@@ -24,6 +38,10 @@ import { TodoCard } from "./todo-card"
 import { ThemeToggle } from "./theme-toggle"
 import { TaskFilters } from "./task-filters"
 import { AddTaskDialog } from "./add-task-dialog"
+import { ProjectHero } from "./project-hero"
+import { ResolvedHero } from "./resolved-hero"
+import { ChangelogDialog } from "./changelog-dialog"
+import { isPendingEntry } from "@/lib/changelog"
 import { toast } from "sonner"
 import { useProjectPolling } from "@/lib/use-project-polling"
 import { formatRelativeTime } from "@/lib/activity"
@@ -49,16 +67,31 @@ interface ActivityItemProps {
   onClick?: () => void
 }
 
-// Static mapping so Tailwind generates these bg classes
-const DOT_BG: Record<string, string> = {
-  "text-green-400": "bg-green-400",
-  "text-blue-400": "bg-blue-400",
-  "text-red-400": "bg-red-400",
-  "text-yellow-400": "bg-yellow-400",
-  "text-purple-400": "bg-purple-400",
+// Activity events on disk (written by the /todo skill and the API routes) still
+// use the original Tailwind color names. Map those to the theme-aware tokens.
+const ACTIVITY_COLOR_ALIASES: Record<string, string> = {
+  "text-green-400": "text-status-resolved",
+  "text-blue-400": "text-status-active",
+  "text-red-400": "text-status-blocked",
+  "text-yellow-400": "text-status-queued",
+  "text-purple-400": "text-accent-special",
 }
 
-function ActivityItem({ time, action, title, detail, color, onClick }: ActivityItemProps) {
+function normalizeActivityColor(color: string): string {
+  return ACTIVITY_COLOR_ALIASES[color] ?? color
+}
+
+// Static mapping so Tailwind generates these bg classes
+const DOT_BG: Record<string, string> = {
+  "text-status-resolved": "bg-status-resolved",
+  "text-status-active": "bg-status-active",
+  "text-status-blocked": "bg-status-blocked",
+  "text-status-queued": "bg-status-queued",
+  "text-accent-special": "bg-accent-special",
+}
+
+function ActivityItem({ time, action, title, detail, color: rawColor, onClick }: ActivityItemProps) {
+  const color = normalizeActivityColor(rawColor)
   return (
     <button
       type="button"
@@ -108,9 +141,10 @@ interface DashboardProps {
   defaultProjectIndex?: number | null
   defaultTab?: string | null
   defaultTheme?: string
+  defaultBranch?: string | null
 }
 
-export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme }: DashboardProps) {
+export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch }: DashboardProps) {
   const { projects, refresh } = useProjectPolling(initialProjects)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
     defaultProjectIndex !== undefined && defaultProjectIndex !== null && defaultProjectIndex < initialProjects.length
@@ -120,6 +154,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
   const [selectedTab, setSelectedTab] = useState(
     defaultTab && TAB_ORDER.includes(defaultTab as Status) ? defaultTab : "Active"
   )
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(defaultBranch ?? null)
   const [searchQuery, setSearchQuery] = useState("")
   const [priorityFilter, setPriorityFilter] = useState<Set<Priority>>(new Set())
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
@@ -129,6 +164,8 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
   const [helpOpen, setHelpOpen] = useState(false)
   const [addTaskOpen, setAddTaskOpen] = useState(false)
   const [focusedCardIndex, setFocusedCardIndex] = useState(-1)
+  const [mobileActivityOpen, setMobileActivityOpen] = useState(false)
+  const [changelogOpen, setChangelogOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   function filterItems(items: TodoItem[]): TodoItem[] {
@@ -152,6 +189,15 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
     setSelectedIndex(index)
     setFocusedCardIndex(-1)
     document.cookie = `selected_project=${index}; path=/; max-age=${60 * 60 * 24 * 7}`
+    handleSelectBranch(null)
+  }
+
+  function handleSelectBranch(branch: string | null) {
+    setSelectedBranch(branch)
+    setFocusedCardIndex(-1)
+    document.cookie = branch
+      ? `selected_branch=${encodeURIComponent(branch)}; path=/; max-age=${60 * 60 * 24 * 7}`
+      : "selected_branch=; path=/; max-age=0"
   }
 
   function handleTabChange(value: string | null) {
@@ -164,24 +210,71 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
   const selectedProject =
     selectedIndex !== null ? projects[selectedIndex] : null
 
+  // Distinct branches across the selected project's tasks (unscoped tasks live in "main")
+  const projectBranches = useMemo(() => {
+    if (!selectedProject) return []
+    const branches = new Set<string>()
+    for (const section of selectedProject.sections) {
+      for (const item of section.items) {
+        if (item.branch) branches.add(item.branch)
+      }
+    }
+    return [...branches].sort()
+  }, [selectedProject])
+
+  // Guard against stale cookie values pointing at branches that no longer exist
+  const effectiveBranch =
+    selectedBranch && projectBranches.includes(selectedBranch) ? selectedBranch : null
+
+  // The project viewed through the selected branch directory: "main" = unscoped items
+  const scopedProject = useMemo(() => {
+    if (!selectedProject) return null
+    return {
+      ...selectedProject,
+      sections: selectedProject.sections.map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          effectiveBranch ? item.branch === effectiveBranch : !item.branch
+        ),
+      })),
+    }
+  }, [selectedProject, effectiveBranch])
+
   const activityEvents = selectedProject?.activity ?? []
 
+  useEffect(() => {
+    document.title = selectedProject
+      ? `ClaudeDo | ${selectedProject.name}`
+      : "ClaudeDo"
+  }, [selectedProject])
+
   const existingTasks = useMemo(() => {
-    if (!selectedProject) return []
-    return selectedProject.sections
+    if (!scopedProject) return []
+    return scopedProject.sections
       .filter((s) => s.status !== "Resolved")
       .flatMap((s) => s.items)
-  }, [selectedProject])
+  }, [scopedProject])
+
+  // Resolved items in the current branch scope (feeds the changelog dialog)
+  const scopedResolvedItems = useMemo(() => {
+    if (!scopedProject) return []
+    return scopedProject.sections.find((s) => s.status === "Resolved")?.items ?? []
+  }, [scopedProject])
+
+  const pendingChangelogCount = useMemo(
+    () => scopedResolvedItems.filter(isPendingEntry).length,
+    [scopedResolvedItems]
+  )
 
   const resolvedTitles = useMemo(() => {
-    if (!selectedProject) return new Set<string>()
-    const resolved = selectedProject.sections.find((s) => s.status === "Resolved")
+    if (!scopedProject) return new Set<string>()
+    const resolved = scopedProject.sections.find((s) => s.status === "Resolved")
     return new Set((resolved?.items ?? []).map((i) => i.title))
-  }, [selectedProject])
+  }, [scopedProject])
 
   const currentTabItems = useMemo(() => {
-    if (!selectedProject) return []
-    const section = selectedProject.sections.find((s) => s.status === selectedTab)
+    if (!scopedProject) return []
+    const section = scopedProject.sections.find((s) => s.status === selectedTab)
     const items = section?.items ?? []
     return items.filter((item) => {
       if (searchQuery) {
@@ -195,7 +288,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
       if (categoryFilter.size > 0 && !item.category.some((c) => categoryFilter.has(c))) return false
       return true
     })
-  }, [selectedProject, selectedTab, searchQuery, priorityFilter, categoryFilter])
+  }, [scopedProject, selectedTab, searchQuery, priorityFilter, categoryFilter])
 
 
   // Keyboard shortcuts
@@ -265,46 +358,104 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
         projects={projects}
         selectedIndex={selectedIndex}
         onSelect={handleSelect}
+        selectedBranch={effectiveBranch}
+        onSelectBranch={handleSelectBranch}
       />
       <SidebarInset>
         {selectedProject ? (
           <Tabs value={selectedTab} onValueChange={handleTabChange} className="!gap-0 flex-1 min-h-0 overflow-hidden">
-            <header className="flex shrink-0 h-16 items-center gap-3 border-b px-4">
-              <SidebarToggle />
-              <Separator orientation="vertical" className="!h-4 !self-auto" />
-              <span className="text-sm font-mono font-medium uppercase tracking-[0.15em]">
-                {selectedProject.name}
-              </span>
-              <Separator orientation="vertical" className="!h-4 !self-auto" />
-              <TabsList variant="line" className="!bg-transparent !p-0 !h-auto">
-                <StatusOverview sections={selectedProject.sections} />
-              </TabsList>
-              <div className="ml-auto flex items-center gap-3">
-                <TaskFilters
-                  project={selectedProject}
-                  searchQuery={searchQuery}
-                  onSearchChange={setSearchQuery}
-                  priorityFilter={priorityFilter}
-                  onPriorityChange={setPriorityFilter}
-                  categoryFilter={categoryFilter}
-                  onCategoryChange={setCategoryFilter}
-                  searchInputRef={searchInputRef}
-                />
+            <header className="shrink-0">
+              {/* border-b inside the fixed height so it aligns with the sidebar header's separator */}
+              <div className="flex h-14 md:h-16 items-center gap-2 md:gap-3 px-3 md:px-4 min-w-0 border-b border-border">
+                <SidebarToggle />
                 <Separator orientation="vertical" className="!h-4 !self-auto" />
-                <button
-                  onClick={() => setHelpOpen(true)}
-                  className="size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors font-mono text-xs"
-                  aria-label="Help"
-                >
-                  ?
-                </button>
-                <Separator orientation="vertical" className="!h-4 !self-auto" />
-                <ThemeToggle defaultTheme={defaultTheme} />
+                <span className="text-xs md:text-sm font-mono font-medium uppercase tracking-[0.15em] truncate min-w-0 flex-1 md:flex-none">
+                  {selectedProject.name}
+                </span>
+                {projectBranches.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <button
+                          className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-accent-special border border-accent-special/40 hover:border-accent-special px-1.5 py-0.5 shrink-0 transition-colors"
+                          aria-label="Switch branch"
+                        />
+                      }
+                    >
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                        <circle cx="2" cy="2" r="1.3" stroke="currentColor" strokeWidth="1" />
+                        <circle cx="2" cy="7" r="1.3" stroke="currentColor" strokeWidth="1" />
+                        <circle cx="7" cy="2" r="1.3" stroke="currentColor" strokeWidth="1" />
+                        <path d="M2 3.3v2.4M3.3 2h2.4" stroke="currentColor" strokeWidth="1" />
+                      </svg>
+                      {effectiveBranch ?? "main"}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" sideOffset={8} className="w-44">
+                      <DropdownMenuRadioGroup
+                        value={effectiveBranch ?? "__main"}
+                        onValueChange={(value) =>
+                          handleSelectBranch(value === "__main" ? null : value)
+                        }
+                      >
+                        {["__main", ...projectBranches].map((b) => (
+                          <DropdownMenuRadioItem
+                            key={b}
+                            value={b}
+                            className="text-[11px] font-mono uppercase tracking-wider"
+                          >
+                            {b === "__main" ? "main" : b}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                <Separator orientation="vertical" className="hidden md:block !h-4 !self-auto" />
+                <TabsList variant="line" className="hidden md:inline-flex !bg-transparent !p-0 !h-auto">
+                  <StatusOverview sections={scopedProject!.sections} />
+                </TabsList>
+                <div className="md:ml-auto flex items-center gap-2 md:gap-3 shrink-0">
+                  <TaskFilters
+                    project={scopedProject!}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    priorityFilter={priorityFilter}
+                    onPriorityChange={setPriorityFilter}
+                    categoryFilter={categoryFilter}
+                    onCategoryChange={setCategoryFilter}
+                    searchInputRef={searchInputRef}
+                  />
+                  <Separator orientation="vertical" className="hidden md:block !h-4 !self-auto" />
+                  <button
+                    onClick={() => setMobileActivityOpen(true)}
+                    className="md:hidden size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors"
+                    aria-label="Show activity feed"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <circle cx="5" cy="5" r="1.5" fill="currentColor" />
+                      <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="0.8" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setHelpOpen(true)}
+                    className="size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors font-mono text-xs"
+                    aria-label="Help"
+                  >
+                    ?
+                  </button>
+                  <Separator orientation="vertical" className="hidden md:block !h-4 !self-auto" />
+                  <ThemeToggle defaultTheme={defaultTheme} />
+                </div>
+              </div>
+              <div className="md:hidden border-b border-border px-3 py-2 overflow-x-auto no-scrollbar">
+                <TabsList variant="line" className="!bg-transparent !p-0 !h-auto">
+                  <StatusOverview sections={scopedProject!.sections} />
+                </TabsList>
               </div>
             </header>
             <div className="scanlines flex flex-1 min-h-0 overflow-hidden">
               {/* Cards */}
-              <div className="flex-1 min-w-0 h-full border-r border-border overflow-hidden">
+              <div className="flex-1 min-w-0 h-full md:border-r border-border overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="p-6 flex flex-col min-h-[calc(100%-1px)]">
                     <div className="relative mb-4">
@@ -322,11 +473,11 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                             <rect x="0" y="3" width="8" height="2" fill="currentColor" />
                           </svg>
                         </button>
-                        <AddTaskDialog projectPath={selectedProject.path} existingTasks={existingTasks} onAdded={refresh} open={addTaskOpen} onOpenChange={setAddTaskOpen} />
+                        <AddTaskDialog projectPath={selectedProject.path} existingTasks={existingTasks} onAdded={refresh} open={addTaskOpen} onOpenChange={setAddTaskOpen} branch={effectiveBranch} knownBranches={projectBranches} />
                       </div>
                     </div>
                     {TAB_ORDER.map((status) => {
-                      const section = selectedProject.sections.find(
+                      const section = scopedProject!.sections.find(
                         (s) => s.status === status
                       )
                       const allItems = section?.items ?? []
@@ -337,6 +488,14 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                           value={status}
                           className={filteredItems.length > 0 ? "" : "flex-1 flex flex-col"}
                         >
+                          {status === "Active" && <ProjectHero activeItems={allItems} />}
+                          {status === "Resolved" && (
+                            <ResolvedHero
+                              resolvedItems={allItems}
+                              pendingChangelogCount={pendingChangelogCount}
+                              onOpenChangelog={() => setChangelogOpen(true)}
+                            />
+                          )}
                           {filteredItems.length > 0 ? (
                             <div className="grid gap-3">
                               {filteredItems.map((item, index) => (
@@ -355,6 +514,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                                     onMoved={refresh}
                                     focused={focusedCardIndex === index && status === selectedTab}
                                     resolvedTitles={resolvedTitles}
+                                    branches={projectBranches}
                                   />
                                 </div>
                               ))}
@@ -381,7 +541,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
               </div>
 
               {/* Activity Feed */}
-              <div className="w-80 shrink-0 h-full overflow-hidden">
+              <div className="hidden md:block w-80 shrink-0 h-full overflow-hidden">
                 <ScrollArea className="h-full">
                 <div className="p-6 flex flex-col min-h-[calc(100%-1px)]">
                   <div className="relative mb-4">
@@ -438,10 +598,10 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
           </Tabs>
         ) : (
           <>
-            <header className="flex h-16 items-center gap-3 border-b px-4">
+            <header className="flex h-14 md:h-16 items-center gap-2 md:gap-3 border-b px-3 md:px-4">
               <SidebarToggle />
               <Separator orientation="vertical" className="!h-4 !self-auto" />
-              <span className="text-xs font-mono uppercase tracking-[0.15em] text-muted-foreground">
+              <span className="text-xs font-mono uppercase tracking-[0.15em] text-muted-foreground truncate">
                 no project selected
               </span>
               <div className="ml-auto">
@@ -465,6 +625,69 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
           </>
         )}
       </SidebarInset>
+
+      {selectedProject && (
+        <ChangelogDialog
+          open={changelogOpen}
+          onOpenChange={setChangelogOpen}
+          projectPath={selectedProject.path}
+          branch={effectiveBranch}
+          resolvedItems={scopedResolvedItems}
+          onChanged={refresh}
+        />
+      )}
+
+      <Sheet open={mobileActivityOpen} onOpenChange={setMobileActivityOpen}>
+        <SheetContent side="right" className="w-[88vw] sm:max-w-sm bg-background p-0">
+          <SheetHeader className="border-b px-4 py-3">
+            <SheetTitle className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+              activity feed
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              Recent task activity for the selected project
+            </SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-4 flex flex-col min-h-[calc(100%-1px)]">
+              {activityEvents.length > 0 ? (
+                <div className="space-y-0">
+                  {activityEvents.map((event, i) => {
+                    const props: ActivityItemProps = {
+                      time: formatRelativeTime(event.date),
+                      date: event.date,
+                      action: event.action,
+                      title: event.title,
+                      detail: event.detail,
+                      color: event.color,
+                    }
+                    return (
+                      <ActivityItem
+                        key={`${event.title}-${event.action}-${i}-mobile`}
+                        {...props}
+                        onClick={() => {
+                          setMobileActivityOpen(false)
+                          setSelectedEvent(props)
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-1 items-center justify-center border border-dashed border-muted-foreground/30">
+                  <div className="text-center space-y-2 px-4">
+                    <div className="text-xs font-mono text-primary/60 glow-rose">
+                      &gt; NO ACTIVITY
+                    </div>
+                    <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
+                      events appear as tasks are added and moved
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
         <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm">
@@ -545,7 +768,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
             <>
               <DialogHeader>
                 <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
-                  <span className={selectedEvent.color}>&gt;</span> Event Detail
+                  <span className={normalizeActivityColor(selectedEvent.color)}>&gt;</span> Event Detail
                 </DialogTitle>
                 <DialogDescription className="sr-only">
                   Activity event details
@@ -553,8 +776,8 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
               </DialogHeader>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className={`size-2 rounded-full ${DOT_BG[selectedEvent.color] ?? "bg-muted-foreground"}`} />
-                  <span className={`text-xs font-mono uppercase tracking-[0.15em] ${selectedEvent.color}`}>
+                  <div className={`size-2 rounded-full ${DOT_BG[normalizeActivityColor(selectedEvent.color)] ?? "bg-muted-foreground"}`} />
+                  <span className={`text-xs font-mono uppercase tracking-[0.15em] ${normalizeActivityColor(selectedEvent.color)}`}>
                     {selectedEvent.action}
                   </span>
                 </div>
@@ -594,7 +817,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
       </Dialog>
 
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
-        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm max-w-lg">
+        <DialogContent className="border border-border/50 bg-background/95 backdrop-blur-sm sm:!max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-xs uppercase tracking-[0.15em] font-mono">
               <span className="text-primary glow-rose">&gt;</span> ClaudeDo
@@ -603,7 +826,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
               Help and reference for the ClaudeDo dashboard
             </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="overview" className="!gap-0 flex flex-col overflow-hidden h-[460px]">
+          <Tabs defaultValue="overview" className="!gap-0 flex flex-col overflow-hidden h-[min(70svh,460px)]">
             <TabsList variant="line" className="!bg-transparent !p-0 !h-auto !rounded-none border-b border-border/50 pb-2 mb-4 w-full">
               {["overview", "skill", "dashboard", "keys"].map((tab) => (
                 <TabsTrigger
@@ -636,28 +859,28 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                   </div>
                   <div className="grid gap-1.5">
                     <div className="flex items-center gap-2">
-                      <div className="size-1.5 rounded-full bg-blue-400" />
-                      <span className="text-blue-400 w-20">ACTIVE</span>
+                      <div className="size-1.5 rounded-full bg-status-active" />
+                      <span className="text-status-active w-20">ACTIVE</span>
                       <span className="text-muted-foreground/60 flex-1 text-right">Being worked on</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="size-1.5 rounded-full bg-red-400" />
-                      <span className="text-red-400 w-20">BLOCKED</span>
+                      <div className="size-1.5 rounded-full bg-status-blocked" />
+                      <span className="text-status-blocked w-20">BLOCKED</span>
                       <span className="text-muted-foreground/60 flex-1 text-right">Waiting on something</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="size-1.5 rounded-full bg-yellow-400" />
-                      <span className="text-yellow-400 w-20">QUEUED</span>
+                      <div className="size-1.5 rounded-full bg-status-queued" />
+                      <span className="text-status-queued w-20">QUEUED</span>
                       <span className="text-muted-foreground/60 flex-1 text-right">Ready to pick up</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="size-1.5 rounded-full bg-zinc-500" />
-                      <span className="text-zinc-500 w-20">PENDING</span>
+                      <div className="size-1.5 rounded-full bg-muted-foreground" />
+                      <span className="text-muted-foreground w-20">PENDING</span>
                       <span className="text-muted-foreground/60 flex-1 text-right">Not yet fully defined</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="size-1.5 rounded-full bg-green-400" />
-                      <span className="text-green-400 w-20">RESOLVED</span>
+                      <div className="size-1.5 rounded-full bg-status-resolved" />
+                      <span className="text-status-resolved w-20">RESOLVED</span>
                       <span className="text-muted-foreground/60 flex-1 text-right">Completed and archived</span>
                     </div>
                   </div>
@@ -745,9 +968,9 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     documentation standards
                   </div>
                   <ul className="space-y-1 text-muted-foreground leading-relaxed">
-                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-red-400">Bugs</span> require file references and root cause context</li>
-                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-blue-400">Features</span> require acceptance criteria</li>
-                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-yellow-400">Tasks</span> require a description of what and why</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-status-blocked">Bugs</span> require file references and root cause context</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-status-active">Features</span> require acceptance criteria</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> <span className="text-status-queued">Tasks</span> require a description of what and why</li>
                     <li><span className="text-muted-foreground/40">&#x2013;</span> All items get priority, category, and imperative-mood titles</li>
                   </ul>
                 </div>
@@ -774,7 +997,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     task cards
                   </div>
                   <ul className="space-y-1 text-muted-foreground leading-relaxed">
-                    <li><span className="text-muted-foreground/40">&#x2013;</span> Right-click to move between statuses, change priority, or delete</li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Right-click to move between statuses or branches, change priority, or delete</li>
                     <li><span className="text-muted-foreground/40">&#x2013;</span> Left border color indicates the current status</li>
                     <li><span className="text-muted-foreground/40">&#x2013;</span> Hover cards for a hidden message</li>
                   </ul>

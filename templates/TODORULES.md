@@ -28,11 +28,14 @@ Rules and configuration for this project's TODO system. Claude reads this file w
 
 | Field            | Purpose                                    |
 | :--------------- | :----------------------------------------- |
+| **Branch**       | Git branch this item is scoped to (e.g. a release branch like `training-beta`). Absent = mainline work ("main" in the dashboard). Only scope items that target a non-default branch. |
 | **Dependencies** | Comma-separated titles of other TODO items this depends on. The skill checks these before starting work. |
 | **Steps**        | Checklist of sub-tasks or milestones. Each step is `- [ ] title` (pending) or `- [x] title` (done). The skill tracks progress and suggests resolving the parent when all steps complete. |
 | **Started**      | Date work began (auto-set on Active)          |
 | **Completed**    | Date finished (auto-set on Resolved)          |
 | **Resolution**   | What was done to resolve (auto-set on Resolved)|
+| **Changelog**    | One consumer-facing sentence describing the change for release notes (set on resolve for user-visible work). Plain language, no jargon or file names. |
+| **Released**     | Version this item shipped in (auto-set by `/todo release` or the dashboard's Cut Release). Absent = not yet released. |
 | **Blocked**      | Reason for being blocked (required on Blocked) |
 | **Added**        | Date item was created                          |
 

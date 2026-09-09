@@ -1,8 +1,8 @@
 ---
 name: todo
 description: Manage project TODO items with strict documentation standards. Use when working with TODO.md, discussing tasks/bugs/features, or when the user mentions todos, work items, or task tracking.
-argument-hint: [add|done|move|start|next|stuck|status|scan|dashboard|init|update|help]
-allowed-tools: Read, Write, Edit, Glob, Grep
+argument-hint: [add|done|move|start|next|stuck|status|scan|changelog|release|dashboard|init|update|help]
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git rev-parse:*), Bash(git branch:*)
 ---
 
 # TODO Manager
@@ -14,6 +14,18 @@ You manage a structured TODO system for this project. Every action must follow t
 1. Read `TODORULES.md` in the project root. If it doesn't exist, suggest running `/todo init`.
 2. Read `TODO.md` in the project root. If it doesn't exist, suggest running `/todo init`.
 3. If archiving is enabled in TODORULES.md, check for the archive file (default: `DONE.md`).
+
+## Branch Scoping
+
+Items may carry an optional `- **Branch**: <name>` field scoping them to a git branch (e.g. a release branch like `training-beta`). Items without the field are mainline work — the dashboard shows them under a "main" directory per project. Rules:
+
+- **Don't scope by default.** Work on the repo's default branch stays unscoped. Only set Branch when the user says so ("for the beta branch", "on training-beta") or the task clearly targets a non-default release branch.
+- **`add`**: if the user names a branch, write the Branch field. Otherwise omit it.
+- **`next`**: run `git rev-parse --abbrev-ref HEAD` to get the current branch. Prefer items scoped to it plus unscoped items; skip items scoped to other branches, but mention them (e.g. "2 queued items are waiting on training-beta").
+- **`start`**: if the item's Branch differs from the current git branch, warn and offer to check out that branch (or confirm working anyway) before the briefing.
+- **`status`**: when any items are branch-scoped, annotate counts per branch.
+- **Stale branches**: if an item's Branch no longer exists in `git branch --list`, flag it during `status` and suggest un-scoping or re-scoping the item.
+- If the project isn't a git repository, ignore all git checks and treat Branch as plain metadata.
 
 ## Commands
 
@@ -168,10 +180,11 @@ Omit fields that don't apply (don't include empty fields).
 2. If the item has steps with incomplete entries, warn: "This task has N incomplete steps. Mark as resolved anyway?" If the user declines, stop.
 3. Ask for a brief resolution note (what was done).
 4. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]` to the item.
-5. Check TODORULES.md archive config:
+5. If the change is user-visible (features, fixes, UX changes — not internal refactors, chores, tests, or CI), also add `- **Changelog**: [one consumer-facing sentence]`. Write it in consumer speak: describe the benefit in plain language ("You can now move tasks between branches by right-clicking them", "Fixed an issue where the sidebar forgot your selection"). Present tense, no file names, no code identifiers, no internal jargon. Show the line alongside the resolution so the user can adjust it. Skip silently for internal-only work.
+6. Check TODORULES.md archive config:
    - If `archive: true`: Move the item to the archive file (default `DONE.md`). Create the file from template if it doesn't exist.
    - If `archive: false`: Move the item to the `## Resolved` section at the bottom of TODO.md.
-6. Check referenced files for related `// TODO:` comments. If found, offer to remove them.
+7. Check referenced files for related `// TODO:` comments. If found, offer to remove them.
 
 ### `move` - Move Item to Any Status
 
@@ -187,7 +200,7 @@ Move an item directly to a specific status, handling required fields for the tar
    - **→ Queued**: No extra fields required. Remove `Started` date and `Blocked` reason if present.
    - **→ Active**: Add `- **Started**: [today's date]` if not already present. Remove `Blocked` reason if present.
    - **→ Blocked**: Require a `Blocked` reason — ask the user if not provided. Add `- **Blocked**: [reason]`.
-   - **→ Resolved**: Require a resolution note — ask the user if not provided. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]`. If archive is enabled, move to the archive file instead of the Resolved section.
+   - **→ Resolved**: Require a resolution note — ask the user if not provided. Add `- **Completed**: [today's date]` and `- **Resolution**: [note]`. If the change is user-visible, also add a `- **Changelog**: [consumer-facing sentence]` line (see `done`). If archive is enabled, move to the archive file instead of the Resolved section.
 4. Remove the item from its current status section.
 5. Insert the item into the target status section, ordered by priority within the section.
 6. Confirm the move: show the item title, old status → new status.
@@ -284,6 +297,47 @@ For items with dependencies, append dependency info to the line:
 
 Focus attention on Active and Blocked items first.
 
+### `changelog` - Preview Release Notes
+
+Show the consumer-facing changes accumulated since the last release.
+
+1. Gather all resolved items (TODO.md `## Resolved` + the archive file) that have a `Changelog` field and no `Released` field.
+2. Scope by branch: if the user names a branch ("changelog for training-beta"), include only items with that `Branch`; otherwise include only unscoped (mainline) items, and mention any branch-scoped pending entries separately.
+3. Display a copy-ready markdown block, grouped by type — items whose category includes Bug (or whose title starts with "Fix") go under `### Fixed`, everything else under `### New`:
+   ```
+   ## Unreleased — [today's date]
+
+   ### New
+   - [changelog line]
+
+   ### Fixed
+   - [changelog line]
+   ```
+4. List resolved items that have neither `Changelog` nor `Released` and offer to draft consumer-speak lines for them (same style rules as `done`). Add the lines the user approves.
+5. Mention `/todo release [version]` to cut the release.
+
+### `release` - Cut a Release
+
+Write pending changelog entries to `CHANGELOG.md` and stamp the items.
+
+1. Determine the version from `$ARGUMENTS` (e.g. `release v0.3.0`). If missing, look at the newest `## ` heading in CHANGELOG.md, suggest the next patch bump, and ask.
+2. Scope by branch exactly as in `changelog` (user-named branch, else mainline/unscoped).
+3. Gather pending entries (Changelog set, no Released). If there are none, say so and stop.
+4. Show the entries grouped New/Fixed and confirm with the user.
+5. Prepend a section to `CHANGELOG.md` (create the file with a `# Changelog` header if missing — newest release stays at the top):
+   ```
+   ## [version] — [today's date] ([branch, only if scoped])
+
+   ### New
+   - ...
+
+   ### Fixed
+   - ...
+   ```
+6. Stamp **every** in-scope resolved item that lacks a `Released` field with `- **Released**: [version]` — including items without changelog lines, so they stop surfacing as unlogged candidates. Update both TODO.md's Resolved section and the archive file.
+7. Log an activity event: `{ action: "RELEASED", title: "[version]", detail: "[N] changes → CHANGELOG.md", color: "text-green-400" }`.
+8. Show the final markdown block so the user can paste it anywhere else (release page, announcement, etc.).
+
 ### `dashboard` - Launch Web Dashboard
 
 Open the ClaudeDo dashboard in the browser, starting the dev server if needed.
@@ -329,6 +383,8 @@ Display this quick reference:
 /todo stuck [item]          Mark an item as blocked with a reason
 /todo status                Overview of all items by status
 /todo scan                  Find inline // TODO comments and sync with TODO.md
+/todo changelog             Preview consumer-facing release notes (pending changes)
+/todo release [version]     Write pending changes to CHANGELOG.md and stamp items
 /todo dashboard             Launch the web dashboard in the browser
 /todo init                  Initialize TODO system (or migrate existing TODO.md)
 /todo update                Refresh TODORULES.md template and audit items
@@ -361,6 +417,7 @@ After every action that modifies TODO.md or DONE.md (`add`, `done`, `move`, `sta
 - `MOVED` / `text-yellow-400` — item moved between other statuses via `move` (e.g. Queued → Pending)
 - `BLOCKED` / `text-red-400` — item marked blocked via `stuck` or `move`
 - `UPDATED` / `text-purple-400` — step completed during work via `start` or `done step`
+- `RELEASED` / `text-green-400` — release cut via `release` (title = version)
 
 **Detail field:** Show the status transition, e.g. `"Queued → Active"`, `"Active → Resolved"`, `"Added to Queued"`.
 

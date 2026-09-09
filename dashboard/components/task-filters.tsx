@@ -77,21 +77,28 @@ export function TaskFilters({
         placeholder="Search..."
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="w-40 h-7 text-[10px] font-mono uppercase tracking-[0.1em] placeholder:normal-case placeholder:tracking-normal"
+        className="w-20 md:w-40 h-7 text-[10px] font-mono uppercase tracking-[0.1em] placeholder:normal-case placeholder:tracking-normal"
       />
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <button
-              className={`h-7 px-2.5 border text-[10px] font-mono uppercase tracking-[0.15em] transition-colors ${
+              className={`h-7 px-2 md:px-2.5 border text-[10px] font-mono uppercase tracking-[0.15em] transition-colors inline-flex items-center gap-1 ${
                 hasActiveFilters
                   ? "border-primary text-primary"
                   : "border-border text-muted-foreground hover:text-foreground"
               }`}
+              aria-label="Filter"
             />
           }
         >
-          Filter{hasActiveFilters ? ` (${priorityFilter.size + categoryFilter.size})` : ""}
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="md:hidden">
+            <path d="M1 2h8M2.5 5h5M4 8h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          <span className="hidden md:inline">Filter</span>
+          {hasActiveFilters && (
+            <span>{`(${priorityFilter.size + categoryFilter.size})`}</span>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={12} className="w-48">
           <DropdownMenuGroup>

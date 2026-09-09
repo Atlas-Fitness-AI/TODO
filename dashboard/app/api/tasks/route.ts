@@ -4,6 +4,7 @@ import { existsSync } from "fs"
 import { join } from "path"
 import { homedir } from "os"
 import { parseTodoMarkdown, serializeTodoMarkdown, serializeDoneItem } from "@/lib/parser"
+import { upsertFieldInDoneMarkdown } from "@/lib/changelog"
 import { readActivityLog } from "@/lib/activity-log"
 import type { Priority, Status, Step, TodoItem, AppConfig, ActivityEvent } from "@/lib/types"
 
@@ -106,7 +107,7 @@ async function getArchiveConfig(projectPath: string): Promise<{ archive: boolean
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { projectPath, title, priority, category, description, status, dependencies, steps } = body as {
+    const { projectPath, title, priority, category, description, status, dependencies, steps, branch } = body as {
       projectPath: string
       title: string
       priority: Priority
@@ -115,6 +116,7 @@ export async function POST(request: Request) {
       status?: Status
       dependencies?: string
       steps?: Step[]
+      branch?: string
     }
 
     if (!projectPath || !title?.trim()) {
@@ -164,6 +166,7 @@ export async function POST(request: Request) {
       priority,
       category: category || [],
       status: targetStatus,
+      ...(branch?.trim() && { branch: branch.trim() }),
       ...(description?.trim() && { description: description.trim() }),
       ...(dependencies?.trim() && { dependencies: dependencies.trim() }),
       ...(steps && steps.length > 0 && { steps }),
@@ -195,6 +198,50 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+}
+
+// Set (or clear, when line is empty) the Changelog field on a task,
+// searching TODO.md first and falling back to the archive file.
+async function setChangelogLine(projectPath: string, title: string, line: string) {
+  if (!(await isRegisteredProject(projectPath))) {
+    return NextResponse.json({ error: "Project not registered" }, { status: 403 })
+  }
+
+  // Try TODO.md first
+  const todoPath = join(projectPath, "TODO.md")
+  try {
+    const content = await readFile(todoPath, "utf-8")
+    const parsed = parseTodoMarkdown(content)
+    for (const section of parsed.sections) {
+      const index = section.items.findIndex((i) => i.title === title)
+      if (index !== -1) {
+        const updated = { ...section.items[index] }
+        if (line) updated.changelog = line
+        else delete updated.changelog
+        section.items[index] = updated
+        await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, parsed.sections), "utf-8")
+        return NextResponse.json({ success: true })
+      }
+    }
+  } catch {
+    // fall through to archive
+  }
+
+  // Fall back to the archive file (targeted edit preserves formatting)
+  const archiveConfig = await getArchiveConfig(projectPath)
+  const archivePath = join(projectPath, archiveConfig.archiveFile)
+  try {
+    const doneContent = await readFile(archivePath, "utf-8")
+    const updated = upsertFieldInDoneMarkdown(doneContent, title, "Changelog", line)
+    if (updated !== null) {
+      await writeFile(archivePath, updated, "utf-8")
+      return NextResponse.json({ success: true })
+    }
+  } catch {
+    // archive missing — fall through to 404
+  }
+
+  return NextResponse.json({ error: `Task not found: ${title}` }, { status: 404 })
 }
 
 async function loadAndFindTask(projectPath: string, title: string) {
@@ -237,12 +284,14 @@ async function loadAndFindTask(projectPath: string, title: string) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json()
-    const { projectPath, title, newStatus, newPriority, toggleStep } = body as {
+    const { projectPath, title, newStatus, newPriority, toggleStep, newBranch, newChangelog } = body as {
       projectPath: string
       title: string
       newStatus?: Status
       newPriority?: Priority
       toggleStep?: number
+      newBranch?: string | null // null or "" = unscoped (main)
+      newChangelog?: string // consumer-facing release-notes line; "" = remove
     }
 
     if (!projectPath || !title) {
@@ -252,9 +301,27 @@ export async function PATCH(request: Request) {
       )
     }
 
-    if (!newStatus && !newPriority && toggleStep === undefined) {
+    if (!newStatus && !newPriority && toggleStep === undefined && newBranch === undefined && newChangelog === undefined) {
       return NextResponse.json(
-        { error: "newStatus, newPriority, or toggleStep is required" },
+        { error: "newStatus, newPriority, toggleStep, newBranch, or newChangelog is required" },
+        { status: 400 }
+      )
+    }
+
+    // Handle changelog line edit — the item may live in TODO.md or the archive
+    if (newChangelog !== undefined) {
+      if (typeof newChangelog !== "string" || newChangelog.includes("\n")) {
+        return NextResponse.json(
+          { error: "newChangelog must be a single-line string" },
+          { status: 400 }
+        )
+      }
+      return setChangelogLine(projectPath, title, newChangelog.trim())
+    }
+
+    if (newBranch !== undefined && newBranch !== null && typeof newBranch !== "string") {
+      return NextResponse.json(
+        { error: "newBranch must be a string or null" },
         { status: 400 }
       )
     }
@@ -309,6 +376,45 @@ export async function PATCH(request: Request) {
         title,
         detail: `Step ${toggledStep.completed ? "completed" : "unchecked"}: ${toggledStep.title}`,
         color: "text-purple-400",
+      }
+      await writeFile(logPath, JSON.stringify([event, ...existing].slice(0, 50), null, 2), "utf-8")
+
+      return NextResponse.json({ success: true })
+    }
+
+    // Handle branch move (null/empty = back to main)
+    if (newBranch !== undefined) {
+      const target = newBranch?.trim() || undefined
+      if (target && /[\s]/.test(target)) {
+        return NextResponse.json(
+          { error: "Branch names cannot contain whitespace" },
+          { status: 400 }
+        )
+      }
+      if ((foundItem.branch ?? undefined) === target) {
+        return NextResponse.json(
+          { error: "Task is already on that branch" },
+          { status: 400 }
+        )
+      }
+
+      const oldBranch = foundItem.branch
+      const section = parsed.sections.find((s) => s.status === foundSection)!
+      const updated: TodoItem = { ...foundItem }
+      if (target) updated.branch = target
+      else delete updated.branch
+      section.items[foundIndex] = updated
+
+      await writeFile(todoPath, serializeTodoMarkdown(parsed.projectName, parsed.sections), "utf-8")
+
+      const logPath = join(projectPath, ".todo-activity.json")
+      const existing = await readActivityLog(projectPath)
+      const event: ActivityEvent = {
+        date: new Date().toISOString(),
+        action: "MOVED",
+        title,
+        detail: `Branch ${oldBranch ?? "main"} → ${target ?? "main"}`,
+        color: "text-yellow-400",
       }
       await writeFile(logPath, JSON.stringify([event, ...existing].slice(0, 50), null, 2), "utf-8")
 

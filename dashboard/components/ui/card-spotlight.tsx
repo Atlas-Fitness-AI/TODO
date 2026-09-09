@@ -2,8 +2,17 @@
 
 import { useMotionValue, motion, useMotionTemplate } from "motion/react";
 import React, { MouseEvent as ReactMouseEvent, useState } from "react";
-import { CanvasRevealEffect } from "@/components/ui/canvas-reveal-effect";
+import dynamic from "next/dynamic";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+
+const CanvasRevealEffect = dynamic(
+  () =>
+    import("@/components/ui/canvas-reveal-effect").then(
+      (m) => m.CanvasRevealEffect
+    ),
+  { ssr: false }
+);
 
 export const CardSpotlight = ({
   children,
@@ -18,8 +27,12 @@ export const CardSpotlight = ({
   revealContent?: React.ReactNode;
   children: React.ReactNode;
 } & React.HTMLAttributes<HTMLDivElement>) => {
+  const isMobile = useIsMobile();
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
+  const [isHovering, setIsHovering] = useState(false);
+  const maskImage = useMotionTemplate`radial-gradient(${radius}px circle at ${mouseX}px ${mouseY}px, white, transparent 80%)`;
+
   function handleMouseMove({
     currentTarget,
     clientX,
@@ -31,9 +44,23 @@ export const CardSpotlight = ({
     mouseY.set(clientY - top);
   }
 
-  const [isHovering, setIsHovering] = useState(false);
   const handleMouseEnter = () => setIsHovering(true);
   const handleMouseLeave = () => setIsHovering(false);
+
+  if (isMobile) {
+    return (
+      <div
+        className={cn(
+          "p-10 rounded-md relative overflow-hidden border border-neutral-800 bg-black dark:border-neutral-800",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -49,13 +76,7 @@ export const CardSpotlight = ({
         className="pointer-events-none absolute z-0 inset-0 opacity-0 transition duration-300 group-hover/spotlight:opacity-100"
         style={{
           backgroundColor: color,
-          maskImage: useMotionTemplate`
-            radial-gradient(
-              ${radius}px circle at ${mouseX}px ${mouseY}px,
-              white,
-              transparent 80%
-            )
-          `,
+          maskImage,
         }}
       >
         {isHovering && (
@@ -75,13 +96,7 @@ export const CardSpotlight = ({
         <motion.div
           className="pointer-events-none absolute inset-0 z-20 opacity-0 transition duration-300 group-hover/spotlight:opacity-100"
           style={{
-            maskImage: useMotionTemplate`
-              radial-gradient(
-                ${radius}px circle at ${mouseX}px ${mouseY}px,
-                white,
-                transparent 80%
-              )
-            `,
+            maskImage,
           }}
         >
           {revealContent}

@@ -44,8 +44,9 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 
 **API routes:**
 - `app/api/projects/route.ts` — GET (list projects + activity), PUT (validate path), POST (add), PATCH (rename), DELETE (remove). All operate on `~/.claudedo/config.json`.
-- `app/api/tasks/route.ts` — POST (add task with optional steps), PATCH (move status, change priority, or toggle step), DELETE (delete task, clear status group, or clear activity log). Reads/writes TODO.md via parser + serializer, logs events to `.todo-activity.json`.
+- `app/api/tasks/route.ts` — POST (add task with optional steps), PATCH (move status, change priority, toggle step, or move to a branch via `newBranch`; null/empty = main), DELETE (delete task, clear status group, or clear activity log). Reads/writes TODO.md via parser + serializer, logs events to `.todo-activity.json`.
 - `app/api/open/route.ts` — POST to open a project path in Finder or Terminal (validates path is a registered project)
+- `app/api/release/route.ts` — POST to cut a release: gathers resolved items with a `Changelog` field and no `Released` field (branch-scoped), prepends a version section to the project's CHANGELOG.md, and stamps every in-scope resolved item with `Released: <version>` (TODO.md via serializer, DONE.md via targeted field upsert in `lib/changelog.ts`)
 
 **Key patterns:**
 - Cookie-based state persistence (sidebar, selected project, tab, theme) — read on server, passed as `default*` props, written on client via `document.cookie`
@@ -67,6 +68,8 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 ## TODO System
 
 This project uses a structured TODO system. Tasks, bugs, and features are tracked in `TODO.md` with rules defined in `TODORULES.md`.
+
+**Changelog system:** resolved items may carry `- **Changelog**: <consumer-facing sentence>` (written by the skill on `done`, or from the dashboard's Release Notes dialog on the Resolved tab) and `- **Released**: <version>` (stamped when a release is cut). Pending release notes = changelog set, no release stamp. The dialog and `/todo changelog` / `/todo release` group entries into New/Fixed (bug-ish category or "Fix…" title → Fixed).
 
 Use the `/todo` skill to manage items:
 - `/todo` or `/todo status` — overview of all items
