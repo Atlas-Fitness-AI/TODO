@@ -310,14 +310,31 @@ export function AppSidebar({
         <SidebarFooter className="border-t border-border px-4 py-3 space-y-3">
           {crew.length > 0 && (
             <div className="space-y-2">
-              <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">crew</div>
-              <div className="flex flex-wrap items-end gap-3">
+              <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
+                <span>crew</span>
+                <span>
+                  {crew.filter((m) => m.working).length}/{crew.length} working
+                </span>
+              </div>
+              <div className="grid gap-1.5">
                 {crew.map((m) => (
-                  <div key={m.userId} className="flex flex-col items-center gap-1" title={`${m.name} · ${petName(m.pet)}${m.working ? " · working" : " · idle"}`}>
-                    <Pet kind={m.pet!} state={m.working ? "work" : "sleep"} size={20} title={`${petName(m.pet)} (${m.name})`} />
-                    <span className={`text-[9px] font-mono uppercase tracking-wider truncate max-w-14 ${m.working ? "text-primary" : "text-muted-foreground/50"}`}>
-                      {m.name}
-                    </span>
+                  <div
+                    key={m.userId}
+                    className={`flex items-center gap-3 border px-2.5 py-2 transition-colors ${
+                      m.working ? "border-primary/40 bg-primary/5" : "border-border/50 bg-card/40"
+                    }`}
+                    title={`${petName(m.pet)} the ${m.pet} · ${m.name} · ${m.working ? "working on a task" : "idle"}`}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-end justify-center">
+                      <Pet kind={m.pet!} state={m.working ? "work" : "sleep"} size={28} title={`${petName(m.pet)} (${m.name})`} />
+                    </div>
+                    <div className="min-w-0 flex-1 leading-tight">
+                      <div className="truncate text-[11px] font-mono font-medium uppercase tracking-wider">{m.name}</div>
+                      <div className={`truncate text-[9px] font-mono uppercase tracking-[0.15em] ${m.working ? "text-primary" : "text-muted-foreground/50"}`}>
+                        {petName(m.pet)} · {m.working ? "working" : "idle"}
+                      </div>
+                    </div>
+                    <span className={`size-1.5 shrink-0 rounded-full ${m.working ? "bg-status-active animate-pulse" : "bg-muted-foreground/30"}`} />
                   </div>
                 ))}
               </div>

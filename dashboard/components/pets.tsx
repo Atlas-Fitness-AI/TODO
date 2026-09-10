@@ -272,7 +272,8 @@ export function Pet({ kind, state = "idle", size = 24, title, className }: PetPr
   const label = title ?? `${def.name} the ${kind}`
   const period = working ? "0.5s" : state === "sleep" ? "2.4s" : "1.1s"
 
-  const frames: string[][] = state === "sleep" ? [closeEyes(def.frames[0])] : [def.frames[0], def.frames[1]]
+  const frames: string[][] =
+    state === "sleep" ? [closeEyes(def.frames[0]), closeEyes(def.frames[1])] : [def.frames[0], def.frames[1]]
 
   return (
     <svg
@@ -310,8 +311,8 @@ export function Pet({ kind, state = "idle", size = 24, title, className }: PetPr
           className="pet-zzz"
           style={{ animationName: "pet-zzz", animationDuration: "2.4s", animationTimingFunction: "ease-out", animationIterationCount: "infinite" }}
         >
-          <rect x={6} y={0} width={1} height={1} fill="var(--muted-foreground)" />
-          <rect x={7} y={-1} width={1} height={1} fill="var(--muted-foreground)" />
+          <rect x={6} y={0} width={1} height={1} fill="var(--primary)" />
+          <rect x={7} y={-1} width={1} height={1} fill="var(--primary)" opacity={0.6} />
         </g>
       )}
     </svg>
