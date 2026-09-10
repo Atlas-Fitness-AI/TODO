@@ -20,6 +20,8 @@ $todo add Fix the login timeout        Codex
 
 MIT licensed. No accounts, no servers, no database required until you want one.
 
+<p align="center"><img src="assets/screenshots/board.png" alt="The TODO dashboard: an Active tab with two task cards, a pixel pet working on each, a crew roster in the sidebar, and a team activity feed on the right" width="100%"></p>
+
 ---
 
 ## Quick Start
@@ -146,11 +148,26 @@ That starts the dev server if needed, finds a free port, and opens your browser.
 - Add tasks and projects directly, with the same fields the skill enforces
 - Release Notes dialog on the Resolved tab, with a Cut Release button
 
+<p align="center"><img src="assets/screenshots/resolved.png" alt="The Resolved tab: a mission log with counts and a thirty-day activity chart above the resolved cards, each credited to the pet that shipped it" width="100%"></p>
+
 **Themes.** Ten of them: Light, Dark, Tokyo, CRT, Rosé, Synth, Ember, Dawn, Abyss, and Mono. Each has its own status and accent palette, not just a tint.
+
+<table>
+  <tr>
+    <td><img src="assets/screenshots/theme-tokyo.png" alt="Tokyo theme" width="100%"></td>
+    <td><img src="assets/screenshots/theme-synth.png" alt="Synth theme" width="100%"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/theme-mono.png" alt="Mono theme" width="100%"></td>
+    <td><img src="assets/screenshots/theme-dawn.png" alt="Dawn theme" width="100%"></td>
+  </tr>
+</table>
 
 **Keyboard.** `1` to `5` switch tabs, `j` and `k` move between cards, `n` adds a task, `/` focuses search, `c` collapses cards, `?` opens help.
 
-**Pets.** With team sync on, pick a pixel companion from the header menu: Pixel the cat, Bit the dog, Ping the frog, Sudo the octopus, Null the owl, Lag the snail, Daemon the robot, Kernel the dragon, Waddle the penguin, Boo the ghost, Pinch the crab, or Echo the bat. Your pet appears on every task you start, typing away where the whole team can see it. The sidebar shows the crew: typing when someone is working, dozing at the keyboard when they have a task but haven't been seen for five minutes, and asleep when they have nothing active. Presence comes from a heartbeat that every skill command and open dashboard sends.
+**Pets.** With team sync on, pick a pixel companion from the header menu: Pixel the cat, Bit the dog, Ping the frog, Sudo the octopus, Null the owl, Lag the snail, Daemon the robot, Kernel the dragon, Waddle the penguin, Boo the ghost, Pinch the crab, or Echo the bat. Your pet appears on every task you start, typing away where the whole team can see it, and stays on the ones you finish. The sidebar shows the crew: typing when someone is working, dozing at the keyboard when they have a task but haven't been seen for five minutes, and asleep when they have nothing active. Presence comes from a heartbeat that every skill command and open dashboard sends.
+
+<p align="center"><img src="assets/screenshots/pets.png" alt="The team menu open, showing the twelve pets to choose from, with the activity feed using pets as timeline markers" width="100%"></p>
 
 Projects are stored in `~/.atlas-todo/config.json`. Add them from the sidebar or edit the file.
 
