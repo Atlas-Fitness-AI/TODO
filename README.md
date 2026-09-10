@@ -263,9 +263,11 @@ One Supabase project equals one team. Everyone who signs in can read and write e
 
 Each teammate repeats steps 6 and 7 with the same URL and key and their own GitHub account. Projects are matched across machines by their git `origin` remote.
 
-### Keeping a project local
+### Choosing which projects are shared
 
-Sync applies to every project on the machine that has a git remote. To keep one out of the team database, set `sync: false` in the config block at the bottom of its `TODORULES.md`:
+Nothing is shared without a decision. The first time sync would run for a project, you're asked whether to share it with the team or keep it local: the skill asks during `init` or the first command in an older project, the `todo` command asks in the terminal, and the dashboard's add-project dialog has a "Share with team" checkbox. The answer is recorded in the config block at the bottom of the project's `TODORULES.md`, and a project with no answer yet stays local.
+
+To change it later, edit that line:
 
 ```yaml
 archive: true
@@ -273,7 +275,7 @@ archive_file: DONE.md
 sync: false
 ```
 
-The skill, the `todo` command, and the dashboard all treat that project as local-only, exactly as if sync were not configured.
+With `sync: false`, the skill, the `todo` command, and the dashboard all treat the project as local-only, exactly as if sync were not configured. Switch it to `true` and the next sync imports the project.
 
 ### The `todo` command
 

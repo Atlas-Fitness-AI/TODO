@@ -303,6 +303,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
         onSelect={handleSelect}
         selectedBranch={effectiveBranch}
         onSelectBranch={handleSelectBranch}
+        syncSignedIn={syncStatus?.signedIn ?? false}
       />
       <SidebarInset>
         {selectedProject ? (

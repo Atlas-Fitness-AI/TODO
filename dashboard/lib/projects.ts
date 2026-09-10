@@ -139,7 +139,7 @@ export async function loadAllProjects(): Promise<ParsedProject[]> {
       const path = local?.path ?? cachePathForRemote(t.remote_url)
       let syncError: string | undefined
       try {
-        await syncPath(path, { remote: t.remote_url })
+        await syncPath(path, { remote: t.remote_url, assumeShared: !local })
       } catch (err) {
         syncError = (err as Error).message
       }

@@ -127,9 +127,10 @@ export async function PUT(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { path: projectPath, name } = body as {
+    const { path: projectPath, name, share } = body as {
       path: string
       name?: string
+      share?: boolean
     }
 
     if (!projectPath || typeof projectPath !== "string") {
@@ -156,6 +157,12 @@ export async function POST(request: Request) {
       path: trimmedPath,
     }
     result.config.projects.push(newProject)
+
+    // Record the team-sync decision so the first poll doesn't have to guess.
+    if (typeof share === "boolean" && (await getServerAuth())) {
+      const { setSyncSetting } = await import("@/lib/sync")
+      await setSyncSetting(trimmedPath, share)
+    }
 
     await mkdir(CONFIG_DIR, { recursive: true })
     await writeFile(

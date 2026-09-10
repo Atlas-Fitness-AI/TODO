@@ -113,22 +113,63 @@ async function writeState(projectPath: string, state: SyncState): Promise<void> 
   await writeAtomic(join(projectPath, STATE_FILE), JSON.stringify(state, null, 2) + "\n")
 }
 
+const RULES_FILE = "TODORULES.md"
+const YAML_BLOCK = /```ya?ml\n([\s\S]*?)```/
+
 /**
- * A project opts out of team sync with `sync: false` in the config block of
- * its TODORULES.md. Absent means opted in.
+ * The project's team-sync decision from the config block of TODORULES.md:
+ * true (share), false (keep local), or undefined (nobody has decided yet).
  */
-export async function isSyncDisabled(projectPath: string): Promise<boolean> {
-  const rules = await readIfExists(join(projectPath, "TODORULES.md"))
-  if (!rules) return false
-  const block = rules.match(/```ya?ml\n([\s\S]*?)```/)
+export async function getSyncSetting(projectPath: string): Promise<boolean | undefined> {
+  const rules = await readIfExists(join(projectPath, RULES_FILE))
+  if (!rules) return undefined
+  const block = rules.match(YAML_BLOCK)
   const body = block ? block[1] : rules
-  return /^\s*sync:\s*false\s*(#.*)?$/m.test(body)
+  const match = body.match(/^\s*sync:\s*(true|false)\s*(#.*)?$/m)
+  return match ? match[1] === "true" : undefined
+}
+
+/** Record the decision in TODORULES.md, creating a config block if needed. */
+export async function setSyncSetting(projectPath: string, enabled: boolean): Promise<void> {
+  const path = join(projectPath, RULES_FILE)
+  const line = `sync: ${enabled}`
+  let rules = (await readIfExists(path)) ?? "# TODO Rules\n"
+  const block = rules.match(YAML_BLOCK)
+  if (block) {
+    const body = block[1]
+    const next = /^\s*sync:\s*(true|false)\s*(#.*)?$/m.test(body)
+      ? body.replace(/^(\s*)sync:\s*(true|false)\s*(#.*)?$/m, `$1${line}`)
+      : body.replace(/\n?$/, "") + `\n${line}\n`
+    rules = rules.replace(block[0], "```yaml\n" + next + "```")
+  } else {
+    rules = rules.replace(/\n?$/, "") + `\n\n## Config\n\n\x60\x60\x60yaml\narchive: true\narchive_file: DONE.md\n${line}\n\x60\x60\x60\n`
+  }
+  await writeAtomic(path, rules)
+}
+
+/** True once this checkout has synced at least once. */
+export async function hasSyncState(projectPath: string): Promise<boolean> {
+  return (await readState(projectPath)) !== null
 }
 
 export class SyncDisabledError extends SyncError {
   constructor() {
     super("Team sync disabled for this project (sync: false in TODORULES.md)")
   }
+}
+
+export class SyncUndecidedError extends SyncError {
+  constructor() {
+    super("This project hasn't been shared with the team yet. Set `sync: true` or `sync: false` in TODORULES.md, or run `todo sync` in a terminal to choose.")
+  }
+}
+
+/** Whether syncProject would run for this checkout. */
+export async function isSyncDisabled(projectPath: string): Promise<boolean> {
+  const setting = await getSyncSetting(projectPath)
+  if (setting === false) return true
+  if (setting === undefined) return !(await hasSyncState(projectPath))
+  return false
 }
 
 export function newTaskId(): string {
@@ -379,6 +420,8 @@ async function ensureGitignore(projectPath: string, log: (msg: string) => void):
 export interface SyncOptions {
   /** Project identity when the directory is not a git checkout (cache dirs). */
   remote?: string
+  /** Sync even when TODORULES.md has no explicit decision (team cache dirs). */
+  assumeShared?: boolean
   /** Allow a push that deletes many tasks at once. */
   force?: boolean
   /** Skip pushing even if the files changed (read-only refresh). */
@@ -390,7 +433,11 @@ export async function syncProject(auth: AuthedClient, projectPath: string, opts:
   const log = opts.log ?? (() => {})
   const { client, user } = auth
 
-  if (await isSyncDisabled(projectPath)) throw new SyncDisabledError()
+  const setting = await getSyncSetting(projectPath)
+  if (setting === false) throw new SyncDisabledError()
+  if (setting === undefined && !opts.assumeShared && !(await hasSyncState(projectPath))) {
+    throw new SyncUndecidedError()
+  }
 
   const remote = opts.remote ?? (await getProjectRemote(projectPath))
   if (!remote) throw new SyncError(`${projectPath} has no git origin remote; team sync needs one to identify the project`)

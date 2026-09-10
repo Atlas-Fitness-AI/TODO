@@ -30,6 +30,7 @@ You manage a structured TODO system shared by Claude Code, Codex, and the dashbo
 When the user has configured team sync, tasks live in a shared database and `TODO.md` / `DONE.md` are local caches of it. The `todo` command keeps them in step; you keep editing markdown exactly as described in this skill.
 
 - **Before reading** task files, run `~/.atlas-todo/bin/todo sync` so you start from the team's current state.
+- **First sync asks.** If sync reports the project "hasn't been shared with the team yet", the user has to decide. Ask: "Share this project's tasks with your team, or keep them local?" Then write `sync: true` or `sync: false` into the config block at the bottom of `TODORULES.md` (add the line if missing) and run sync again. Never decide this yourself, and never pass `--force` or edit the setting without asking.
 - **After every write** to `TODO.md`, `DONE.md`, or `.todo-activity.json` (`add`, `done`, `move`, `start`, `next`, `stuck`, `release`, step toggles, `init`, `update`), run `~/.atlas-todo/bin/todo sync` again so your edit reaches the team. Do this once at the end of the command, after all file edits.
 - If sync prints "Team sync not configured" or "Team sync disabled for this project", the project is local-only; skip it silently from then on in this session.
 - A project opts out with `sync: false` in the config block of its `TODORULES.md`. Respect it: don't run sync there, and don't remove the setting during `update`.
@@ -71,12 +72,13 @@ Check for existing files before doing anything. If TODO.md already follows this 
 5. Write the new structured TODO.md with all migrated items in their proper status sections.
 6. Show the user a summary of what was migrated: count by status, any items that need manual review (ambiguous priority/category).
 7. Ask the user to review and adjust anything that was inferred incorrectly.
+8. Same as the fresh-start flow: if team sync is signed in, ask whether to share this project or keep it local, record the answer in `TODORULES.md`, then run `~/.atlas-todo/bin/todo sync`.
 
 **If `TODO.md` does not exist (fresh start):**
 1. Read `templates/TODORULES.md` and write it to `./TODORULES.md`
 2. Read `templates/TODO.md` and write it to `./TODO.md`
 3. Ask the user for the project name and update the `> Project:` line.
-4. Run `~/.atlas-todo/bin/todo sync` if it exists. With team sync configured this registers the project and, if teammates already have tasks for it, fills `TODO.md` with them.
+4. If `~/.atlas-todo/bin/todo` exists and `~/.atlas-todo/bin/todo whoami` reports a signed-in user, ask whether this project's tasks should be shared with the team or kept local, and write `sync: true` or `sync: false` into the config block of `TODORULES.md`. Then run `~/.atlas-todo/bin/todo sync`. Sharing registers the project and, if teammates already have tasks for it, fills `TODO.md` with them.
 
 **Always (including already-initialized projects):**
 - Read `templates/AGENT-TODO.md` and ensure its `## TODO System` section appears in **both** the project's `CLAUDE.md` and `AGENTS.md`, regardless of which agent runs init.

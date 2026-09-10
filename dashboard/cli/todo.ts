@@ -14,10 +14,11 @@
  * call it unconditionally.
  */
 
-import { resolve } from "path"
+import { resolve, basename } from "path"
+import { createInterface } from "readline"
 import { loadConfig, loadSyncConfig } from "../lib/projects"
 import { getAuthedClient, login, clearSession, readStoredSession } from "../lib/sync/session"
-import { syncProject, SyncError, SyncDisabledError, type SyncResult } from "../lib/sync"
+import { syncProject, setSyncSetting, SyncError, SyncDisabledError, SyncUndecidedError, type SyncResult } from "../lib/sync"
 
 const args = process.argv.slice(2)
 const command = args[0] ?? "help"
@@ -31,6 +32,21 @@ function out(msg: string) {
 function fail(msg: string, code = 1): never {
   process.stderr.write(msg + "\n")
   process.exit(code)
+}
+
+async function ask(question: string): Promise<string> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((res) => rl.question(question, (answer) => { rl.close(); res(answer.trim()) }))
+}
+
+/** First sync of a project: decide whether it is shared. Returns false when the user keeps it local. */
+async function decideSharing(path: string): Promise<boolean> {
+  if (!process.stdin.isTTY) return false
+  const answer = await ask(`Share "${basename(path)}" with your team? Tasks will live in the shared database. [y/N] `)
+  const share = /^y(es)?$/i.test(answer)
+  await setSyncSetting(path, share)
+  out(share ? "Marked as shared (sync: true in TODORULES.md)." : "Kept local (sync: false in TODORULES.md).")
+  return share
 }
 
 function summarize(r: SyncResult): string {
@@ -116,12 +132,19 @@ async function main() {
 
       let failed = false
       for (const path of targets) {
+        const options = { force: flags.has("--force"), pullOnly: flags.has("--pull"), log: out }
         try {
-          const result = await syncProject(auth, path, {
-            force: flags.has("--force"),
-            pullOnly: flags.has("--pull"),
-            log: out,
-          })
+          let result: SyncResult
+          try {
+            result = await syncProject(auth, path, options)
+          } catch (err) {
+            if (!(err instanceof SyncUndecidedError)) throw err
+            if (!(await decideSharing(path))) {
+              out(`${path}: ${process.stdin.isTTY ? "kept local" : err.message}`)
+              continue
+            }
+            result = await syncProject(auth, path, options)
+          }
           out(summarize(result))
         } catch (err) {
           if (err instanceof SyncDisabledError) {

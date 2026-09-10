@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export function AddProjectDialog() {
+export function AddProjectDialog({ shareOption = false }: { shareOption?: boolean } = {}) {
   const router = useRouter()
   const triggerId = useId()
   const [open, setOpen] = useState(false)
@@ -26,6 +26,7 @@ export function AddProjectDialog() {
   const [validating, setValidating] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [validated, setValidated] = useState(false)
+  const [share, setShare] = useState(true)
   const validateTimer = useRef<ReturnType<typeof setTimeout>>(null)
 
   function reset() {
@@ -100,6 +101,7 @@ export function AddProjectDialog() {
         body: JSON.stringify({
           path: trimmed,
           name: name.trim() || undefined,
+          ...(shareOption && { share }),
         }),
       })
 
@@ -209,6 +211,24 @@ export function AddProjectDialog() {
               className="font-mono text-[11px]"
             />
           </div>
+          {shareOption && (
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={share}
+                onChange={(e) => setShare(e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
+              <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                Share with team{" "}
+                <span className="block normal-case tracking-normal text-muted-foreground/50">
+                  {share
+                    ? "Tasks move to the shared database and every teammate sees them."
+                    : "Stays local. Change later with sync: true in TODORULES.md."}
+                </span>
+              </span>
+            </label>
+          )}
           {error && (
             <div className="text-[10px] uppercase tracking-wider text-destructive font-mono">
               <span className="text-destructive">err:</span> {error}

@@ -43,6 +43,8 @@ interface AppSidebarProps {
   onSelect: (index: number) => void
   selectedBranch: string | null
   onSelectBranch: (branch: string | null) => void
+  /** True when team sync is signed in; the add dialog then asks whether to share. */
+  syncSignedIn?: boolean
 }
 
 function BranchIcon() {
@@ -81,6 +83,7 @@ export function AppSidebar({
   onSelect,
   selectedBranch,
   onSelectBranch,
+  syncSignedIn = false,
 }: AppSidebarProps) {
   const router = useRouter()
   const { isMobile, setOpenMobile } = useSidebar()
@@ -185,7 +188,7 @@ export function AppSidebar({
               <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
                 Projects
               </div>
-              <AddProjectDialog />
+              <AddProjectDialog shareOption={syncSignedIn} />
             </div>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
