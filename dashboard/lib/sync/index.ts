@@ -114,6 +114,7 @@ async function writeState(projectPath: string, state: SyncState): Promise<void> 
 }
 
 const RULES_FILE = "TODORULES.md"
+const FENCE = "```"
 const YAML_BLOCK = /```ya?ml\n([\s\S]*?)```/
 
 /**
@@ -140,9 +141,12 @@ export async function setSyncSetting(projectPath: string, enabled: boolean): Pro
     const next = /^\s*sync:\s*(true|false)\s*(#.*)?$/m.test(body)
       ? body.replace(/^(\s*)sync:\s*(true|false)\s*(#.*)?$/m, `$1${line}`)
       : body.replace(/\n?$/, "") + `\n${line}\n`
-    rules = rules.replace(block[0], "```yaml\n" + next + "```")
+    rules = rules.replace(block[0], FENCE + "yaml\n" + next + FENCE)
   } else {
-    rules = rules.replace(/\n?$/, "") + `\n\n## Config\n\n\x60\x60\x60yaml\narchive: true\narchive_file: DONE.md\n${line}\n\x60\x60\x60\n`
+    rules =
+      rules.replace(/\n?$/, "") +
+      "\n\n## Config\n\n" +
+      FENCE + "yaml\narchive: true\narchive_file: DONE.md\n" + line + "\n" + FENCE + "\n"
   }
   await writeAtomic(path, rules)
 }
