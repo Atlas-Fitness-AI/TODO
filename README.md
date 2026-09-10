@@ -1,6 +1,8 @@
-# TODO
+<p align="center"><img src="assets/logo.svg" width="112" height="112" alt="Sudo the octopus, the TODO mascot"></p>
 
-**A task tracker your coding agents actually use.**
+<h1 align="center">TODO</h1>
+
+<p align="center"><strong>A task tracker your coding agents actually use.</strong></p>
 
 TODO is a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://developers.openai.com/codex/skills/) that turns either agent into a disciplined project manager, plus a local dashboard that shows every project on one board. Tasks live in plain markdown in your repo, or, for teams, in a shared database that keeps everyone's board in sync in real time.
 

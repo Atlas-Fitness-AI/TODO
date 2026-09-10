@@ -200,8 +200,8 @@ export function AppSidebar({
     <>
       <Sidebar>
         <SidebarHeader className="h-16 justify-center px-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="size-2 bg-primary pulse-dot" />
+          <div className="flex items-center gap-2.5">
+            <Pet kind="octopus" state="idle" size={16} title="Sudo" />
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary glow-rose">
               TODO
             </div>
