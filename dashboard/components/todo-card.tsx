@@ -109,7 +109,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
   const expanded = override?.under === collapsed ? override.expanded : false
   const setExpanded = (next: boolean) => setOverride({ under: collapsed, expanded: next })
   const hasDetails = Boolean(
-    item.description || item.context || item.acceptance || item.files?.length || item.dependencies || item.resolution || item.changelog
+    item.context || item.acceptance || item.files?.length || item.dependencies || item.resolution
   )
   const collapsible = collapsed && hasDetails
   const showDetails = !collapsed || expanded
@@ -275,22 +275,8 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <span className="text-sm font-mono font-medium uppercase tracking-wide">{item.title}</span>
-          <span className="flex items-center gap-2 shrink-0">
-            {collapsible && (
-              <svg
-                width="9"
-                height="9"
-                viewBox="0 0 9 9"
-                fill="none"
-                aria-hidden="true"
-                className={`text-muted-foreground/50 transition-transform ${expanded ? "rotate-180" : ""}`}
-              >
-                <path d="M1 3l3.5 3.5L8 3" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
-            )}
-            <span className={`text-xs font-mono uppercase tracking-wider ${priority.color}`}>
-              [{priority.label}]
-            </span>
+          <span className={`text-xs font-mono uppercase tracking-wider shrink-0 ${priority.color}`}>
+            [{priority.label}]
           </span>
         </div>
 
@@ -309,7 +295,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         )}
 
         {/* Description */}
-        {showDetails && item.description && (
+        {item.description && (
           <p className="text-xs text-muted-foreground leading-relaxed">
             {item.description}
           </p>
