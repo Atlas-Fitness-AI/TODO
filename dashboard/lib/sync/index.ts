@@ -467,7 +467,26 @@ export async function syncProject(auth: AuthedClient, projectPath: string, opts:
   let updated = 0
   let deleted = 0
 
+  let staleWarning: string | undefined
+
   if (localChanged) {
+    const parsed = todoContent ? parseTodoMarkdown(todoContent) : null
+    const archivedItems = doneContent ? parseDoneMarkdown(doneContent) : []
+
+    // Synced files always carry id comments. A file with items but no ids
+    // while the team already has tasks is almost certainly a stale copy that
+    // git checked out from a branch predating sync. Regenerate instead of
+    // pushing it, unless forced.
+    const fileItems = (parsed?.sections.flatMap((sec) => sec.items) ?? []).concat(archivedItems)
+    const hasIds = fileItems.some((i) => i.id)
+    if (!opts.force && rows.length > 0 && fileItems.length > 0 && !hasIds) {
+      staleWarning =
+        "Local task files have no sync ids and look like a stale copy (e.g. checked out from another git branch). " +
+        "Regenerated them from the team database instead of pushing. Use --force to push the local copy."
+    }
+  }
+
+  if (localChanged && !staleWarning) {
     const parsed = todoContent ? parseTodoMarkdown(todoContent) : null
     const archivedItems = doneContent ? parseDoneMarkdown(doneContent) : []
     const byId = new Map(rows.map((r) => [r.id, r]))
@@ -534,6 +553,8 @@ export async function syncProject(auth: AuthedClient, projectPath: string, opts:
 
     if (inserted || updated || deleted) rows = await fetchTasks(client, project.id)
   }
+
+  if (staleWarning) log(staleWarning)
 
   const eventsPushed = opts.pullOnly ? 0 : await pushActivity(client, project.id, user.id, await readActivity(projectPath))
 
