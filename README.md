@@ -2,14 +2,9 @@
 
 <h1 align="center">Fathom</h1>
 
-<p align="center"><strong>A task tracker your coding agents actually use.</strong></p>
+<p align="center"><strong>Your agents keep the board. You read it.</strong></p>
 
 Fathom is a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://developers.openai.com/codex/skills/) that turns either agent into a disciplined project manager, plus a local dashboard that shows every project on one board. Tasks live in plain markdown in your repo, or, for teams, in a shared database that keeps everyone's board in sync in real time.
-
-```
-/todo add Fix the login timeout        Claude Code
-$todo add Fix the login timeout        Codex
-```
 
 ## What it's actually like
 
@@ -27,7 +22,7 @@ A few things that fall out of it:
 - **Multi-step work survives interruptions.** Steps live in the task. A session can end at step two and the next one starts at step three.
 - **Release notes write themselves,** one sentence at a time, as work gets resolved. Cutting a release is one command.
 - **The dashboard shows it all live,** every project on one board, with a team feed and, if you're into that sort of thing, pixel pets that sit on the tasks people are working on.
-- **Teams get it for free.** One Supabase project turns the same tool into a shared, real-time board, without changing how the skill works.
+- **It works for a team the same way.** Point it at a Supabase project and it becomes a shared, real-time board, without changing how the skill works.
 
 MIT licensed. No accounts, no servers, no database required until you want one.
 
@@ -58,6 +53,11 @@ From there, just talk about work. The agent will start tracking it on its own.
 ## Commands
 
 Examples use Claude Code's `/todo`. In Codex, use `$todo` with the same command and details.
+
+```
+/todo add Fix the login timeout        Claude Code
+$todo add Fix the login timeout        Codex
+```
 
 | Command | What it does |
 |---|---|
