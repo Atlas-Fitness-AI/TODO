@@ -291,7 +291,13 @@ export function Pet({ kind, state = "idle", size = 24, title, className }: PetPr
           className="pet-frame"
           style={
             frames.length > 1
-              ? { animation: `pet-frames ${period} steps(1) infinite`, animationDelay: `${(-i * parseFloat(period)) / 2}s` }
+              ? {
+                  animationName: "pet-frames",
+                  animationDuration: period,
+                  animationTimingFunction: "steps(1)",
+                  animationIterationCount: "infinite",
+                  animationDelay: `${(-i * parseFloat(period)) / 2}s`,
+                }
               : undefined
           }
         >
@@ -300,7 +306,10 @@ export function Pet({ kind, state = "idle", size = 24, title, className }: PetPr
         </g>
       ))}
       {state === "sleep" && (
-        <g className="pet-zzz" style={{ animation: "pet-zzz 2.4s ease-out infinite" }}>
+        <g
+          className="pet-zzz"
+          style={{ animationName: "pet-zzz", animationDuration: "2.4s", animationTimingFunction: "ease-out", animationIterationCount: "infinite" }}
+        >
           <rect x={6} y={0} width={1} height={1} fill="var(--muted-foreground)" />
           <rect x={7} y={-1} width={1} height={1} fill="var(--muted-foreground)" />
         </g>
