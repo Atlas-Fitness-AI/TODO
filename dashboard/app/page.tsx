@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import { Dashboard } from "@/components/dashboard"
-import { loadAllProjects } from "@/lib/projects"
+import { loadAllProjects, loadSyncConfig } from "@/lib/projects"
 import { readActivityLog } from "@/lib/activity-log"
 
 export const dynamic = "force-dynamic"
@@ -19,6 +19,7 @@ export default async function Page() {
   const branchRaw = cookieStore.get("selected_branch")?.value
   const defaultBranch = branchRaw ? decodeURIComponent(branchRaw) : null
   const projects = await loadAllProjects()
+  const syncConfig = await loadSyncConfig()
   for (const project of projects) {
     project.activity = await readActivityLog(project.path)
   }
@@ -30,6 +31,7 @@ export default async function Page() {
       defaultTab={defaultTab}
       defaultTheme={defaultTheme}
       defaultBranch={defaultBranch}
+      syncConfig={syncConfig}
     />
   )
 }

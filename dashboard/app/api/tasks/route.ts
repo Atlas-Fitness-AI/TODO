@@ -76,6 +76,7 @@ async function logActivity(
   const { action, color } = getActivityAction(newStatus)
 
   const event: ActivityEvent = {
+    agent: "dashboard",
     date: new Date().toISOString(),
     action,
     title,
@@ -183,6 +184,7 @@ export async function POST(request: Request) {
     const logPath = join(projectPath, ".todo-activity.json")
     const existing = await readActivityLog(projectPath)
     const event: ActivityEvent = {
+      agent: "dashboard",
       date: new Date().toISOString(),
       action: "ADDED",
       title: title.trim(),
@@ -371,6 +373,7 @@ export async function PATCH(request: Request) {
       const logPath = join(projectPath, ".todo-activity.json")
       const existing = await readActivityLog(projectPath)
       const event: ActivityEvent = {
+      agent: "dashboard",
         date: new Date().toISOString(),
         action: "UPDATED",
         title,
@@ -410,6 +413,7 @@ export async function PATCH(request: Request) {
       const logPath = join(projectPath, ".todo-activity.json")
       const existing = await readActivityLog(projectPath)
       const event: ActivityEvent = {
+      agent: "dashboard",
         date: new Date().toISOString(),
         action: "MOVED",
         title,
@@ -440,6 +444,7 @@ export async function PATCH(request: Request) {
       const logPath = join(projectPath, ".todo-activity.json")
       const existing = await readActivityLog(projectPath)
       const event: ActivityEvent = {
+      agent: "dashboard",
         date: new Date().toISOString(),
         action: "UPDATED",
         title,
@@ -576,6 +581,7 @@ export async function DELETE(request: Request) {
         const logPath = join(projectPath, ".todo-activity.json")
         const existing = await readActivityLog(projectPath)
         const event: ActivityEvent = {
+      agent: "dashboard",
           date: new Date().toISOString(),
           action: "DELETED",
           title: `${count} task${count !== 1 ? "s" : ""}`,
@@ -609,6 +615,7 @@ export async function DELETE(request: Request) {
       const logPath = join(projectPath, ".todo-activity.json")
       const existing = await readActivityLog(projectPath)
       const event: ActivityEvent = {
+      agent: "dashboard",
         date: new Date().toISOString(),
         action: "DELETED",
         title,

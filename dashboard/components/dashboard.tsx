@@ -45,7 +45,11 @@ import { isPendingEntry } from "@/lib/changelog"
 import { toast } from "sonner"
 import { useProjectPolling } from "@/lib/use-project-polling"
 import { formatRelativeTime } from "@/lib/activity"
-import type { ParsedProject, Priority, Status, TodoItem } from "@/lib/types"
+import { ActivityItem, normalizeActivityColor, DOT_BG, type ActivityItemProps } from "./activity-item"
+import { TeamMenu } from "./team-menu"
+import { TeamFeed } from "./team-feed"
+import { useTeamSync } from "@/lib/use-team-sync"
+import type { ParsedProject, Priority, Status, SyncConfig, TodoItem } from "@/lib/types"
 
 const TAB_ORDER: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 
@@ -55,67 +59,6 @@ const TAB_LABELS: Record<Status, string> = {
   Queued: "queued",
   Pending: "pending",
   Resolved: "resolved",
-}
-
-interface ActivityItemProps {
-  time: string
-  date: string
-  action: string
-  title: string
-  detail: string
-  color: string
-  onClick?: () => void
-}
-
-// Activity events on disk (written by the /todo skill and the API routes) still
-// use the original Tailwind color names. Map those to the theme-aware tokens.
-const ACTIVITY_COLOR_ALIASES: Record<string, string> = {
-  "text-green-400": "text-status-resolved",
-  "text-blue-400": "text-status-active",
-  "text-red-400": "text-status-blocked",
-  "text-yellow-400": "text-status-queued",
-  "text-purple-400": "text-accent-special",
-}
-
-function normalizeActivityColor(color: string): string {
-  return ACTIVITY_COLOR_ALIASES[color] ?? color
-}
-
-// Static mapping so Tailwind generates these bg classes
-const DOT_BG: Record<string, string> = {
-  "text-status-resolved": "bg-status-resolved",
-  "text-status-active": "bg-status-active",
-  "text-status-blocked": "bg-status-blocked",
-  "text-status-queued": "bg-status-queued",
-  "text-accent-special": "bg-accent-special",
-}
-
-function ActivityItem({ time, action, title, detail, color: rawColor, onClick }: ActivityItemProps) {
-  const color = normalizeActivityColor(rawColor)
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex gap-3 py-3 border-b border-muted-foreground/30 last:border-0 w-full text-left cursor-pointer hover:bg-muted/30 transition-colors"
-    >
-      <div className="flex flex-col items-center pt-1">
-        <div className={`size-1.5 rounded-full ${DOT_BG[color] ?? "bg-muted-foreground"}`} />
-        <div className="w-px flex-1 bg-muted-foreground/30 mt-1" />
-      </div>
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className={`text-[10px] font-mono uppercase tracking-wider ${color}`}>
-            {action}
-          </span>
-          <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0">
-            {time}
-          </span>
-        </div>
-        <p className="text-[11px] font-medium truncate">{title}</p>
-        <p className="text-[10px] font-mono text-muted-foreground/60">{detail}</p>
-      </div>
-    </button>
-  )
 }
 
 function SidebarToggle() {
@@ -142,10 +85,40 @@ interface DashboardProps {
   defaultTab?: string | null
   defaultTheme?: string
   defaultBranch?: string | null
+  syncConfig?: SyncConfig | null
 }
 
-export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch }: DashboardProps) {
+type FeedMode = "local" | "team"
+
+function FeedModeToggle({ mode, onChange, enabled }: { mode: FeedMode; onChange: (m: FeedMode) => void; enabled: boolean }) {
+  if (!enabled) {
+    return (
+      <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+        activity feed
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.15em]" role="tablist" aria-label="Feed source">
+      {(["local", "team"] as FeedMode[]).map((m) => (
+        <button
+          key={m}
+          role="tab"
+          aria-selected={mode === m}
+          onClick={() => onChange(m)}
+          className={`transition-colors ${mode === m ? "text-primary" : "text-muted-foreground/50 hover:text-muted-foreground"}`}
+        >
+          {m === "local" ? "activity feed" : "team"}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch, syncConfig }: DashboardProps) {
   const { projects, refresh } = useProjectPolling(initialProjects)
+  const sync = useTeamSync(syncConfig ?? null, projects)
+  const [feedMode, setFeedMode] = useState<FeedMode>("local")
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
     defaultProjectIndex !== undefined && defaultProjectIndex !== null && defaultProjectIndex < initialProjects.length
       ? defaultProjectIndex
@@ -444,6 +417,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     ?
                   </button>
                   <Separator orientation="vertical" className="hidden md:block !h-4 !self-auto" />
+                  <TeamMenu sync={sync} />
                   <ThemeToggle defaultTheme={defaultTheme} />
                 </div>
               </div>
@@ -545,13 +519,11 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                 <ScrollArea className="h-full">
                 <div className="p-6 flex flex-col min-h-[calc(100%-1px)]">
                   <div className="relative mb-4">
-                    <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
-                      activity feed
-                    </div>
+                    <FeedModeToggle mode={feedMode} onChange={setFeedMode} enabled={sync.status !== "off"} />
                       <button
                         className="absolute right-0 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                         aria-label="Clear activity feed"
-                        disabled={activityEvents.length === 0}
+                        disabled={activityEvents.length === 0 || feedMode === "team"}
                         onClick={() => setClearDialogOpen(true)}
                       >
                         <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
@@ -559,7 +531,17 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                         </svg>
                       </button>
                   </div>
-                  {activityEvents.length > 0 ? (
+                  {feedMode === "team" ? (
+                    <TeamFeed
+                      sync={sync}
+                      remote={selectedProject?.remote}
+                      branch={effectiveBranch}
+                      onSelectEvent={(props) => {
+                        setMobileActivityOpen(false)
+                        setSelectedEvent(props)
+                      }}
+                    />
+                  ) : activityEvents.length > 0 ? (
                     <div className="space-y-0">
                       {activityEvents.map((event, i) => {
                         const props: ActivityItemProps = {
@@ -604,7 +586,8 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
               <span className="text-xs font-mono uppercase tracking-[0.15em] text-muted-foreground truncate">
                 no project selected
               </span>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2 md:gap-3">
+                <TeamMenu sync={sync} />
                 <ThemeToggle defaultTheme={defaultTheme} />
               </div>
             </header>
@@ -649,7 +632,22 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
           </SheetHeader>
           <ScrollArea className="h-full">
             <div className="p-4 flex flex-col min-h-[calc(100%-1px)]">
-              {activityEvents.length > 0 ? (
+              {sync.status !== "off" && (
+                <div className="mb-3">
+                  <FeedModeToggle mode={feedMode} onChange={setFeedMode} enabled />
+                </div>
+              )}
+              {feedMode === "team" ? (
+                    <TeamFeed
+                      sync={sync}
+                      remote={selectedProject?.remote}
+                      branch={effectiveBranch}
+                      onSelectEvent={(props) => {
+                        setMobileActivityOpen(false)
+                        setSelectedEvent(props)
+                      }}
+                    />
+                  ) : activityEvents.length > 0 ? (
                 <div className="space-y-0">
                   {activityEvents.map((event, i) => {
                     const props: ActivityItemProps = {

@@ -2,8 +2,9 @@ import { readFile } from "fs/promises"
 import { existsSync } from "fs"
 import { join } from "path"
 import { homedir } from "os"
-import type { AppConfig, ParsedProject, ProjectConfig } from "./types"
+import type { AppConfig, ParsedProject, ProjectConfig, SyncConfig } from "./types"
 import { parseTodoMarkdown, parseDoneMarkdown } from "./parser"
+import { getProjectRemote } from "./git-remote"
 
 const CONFIG_PATH = join(homedir(), ".atlas-todo", "config.json")
 
@@ -25,6 +26,17 @@ export async function loadConfig(): Promise<AppConfig> {
   } catch {
     return { projects: [] }
   }
+}
+
+/** Team sync settings, or null when the dashboard runs local-only. */
+export async function loadSyncConfig(): Promise<SyncConfig | null> {
+  const config = await loadConfig()
+  const sync = config.sync
+  if (!sync || typeof sync.url !== "string" || typeof sync.publishableKey !== "string") {
+    return null
+  }
+  if (!sync.url.trim() || !sync.publishableKey.trim()) return null
+  return { url: sync.url.trim().replace(/\/+$/, ""), publishableKey: sync.publishableKey.trim() }
 }
 
 export async function loadProject(
@@ -56,9 +68,12 @@ export async function loadProject(
       // DONE.md parse failure shouldn't prevent loading the project
     }
 
+    const remote = await getProjectRemote(config.path)
+
     return {
       name: config.name || parsed.projectName,
       path: config.path,
+      ...(remote && { remote }),
       sections: parsed.sections,
     }
   } catch {

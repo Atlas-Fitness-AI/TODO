@@ -27,7 +27,7 @@ bash "$TEST_DIR/source repo/install.sh" --prefix "$TEST_DIR/both agents"
 assert_bundle "$TEST_DIR/both agents/.claude/skills/todo"
 assert_bundle "$TEST_DIR/both agents/.agents/skills/todo"
 cmp "$REPO_DIR/SKILL.md" "$TEST_DIR/both agents/.claude/skills/todo/SKILL.md"
-if rg -q '^(argument-hint|allowed-tools):' "$TEST_DIR/both agents/.agents/skills/todo/SKILL.md"; then
+if grep -qE '^(argument-hint|allowed-tools):' "$TEST_DIR/both agents/.agents/skills/todo/SKILL.md"; then
   echo "Codex bundle contains Claude-specific frontmatter" >&2
   exit 1
 fi

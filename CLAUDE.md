@@ -49,6 +49,8 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 - `app/api/open/route.ts` — POST to open a project path in Finder or Terminal (validates path is a registered project)
 - `app/api/release/route.ts` — POST to cut a release: gathers resolved items with a `Changelog` field and no `Released` field (branch-scoped), prepends a version section to the project's CHANGELOG.md, and stamps every in-scope resolved item with `Released: <version>` (TODO.md via serializer, DONE.md via targeted field upsert in `lib/changelog.ts`)
 
+**Team sync (optional, `lib/use-team-sync.ts`):** when `~/.atlas-todo/config.json` has a `sync` block (`url`, `publishableKey`), `app/page.tsx` passes it to the Dashboard and the client mirrors state to Supabase. Push-only: projects are keyed by normalized git remote (`lib/git-remote.ts`), the hook upserts a `task_snapshots` row per project/branch with open items and inserts `activity_events` idempotently, and subscribes to Realtime on both tables. Auth is GitHub OAuth via supabase-js in the browser; no server-side session. The schema lives in `supabase/migrations/`. `components/team-menu.tsx` is the header control, `components/team-feed.tsx` the team panel behind the feed's local/team toggle. Activity events carry `actor` and `agent` (`claude` | `codex` | `dashboard`); the API routes stamp `agent: "dashboard"`.
+
 **Key patterns:**
 - Cookie-based state persistence (sidebar, selected project, tab, theme) — read on server, passed as `default*` props, written on client via `document.cookie`
 - `useProjectPolling` hook polls GET `/api/projects` every 3s with hash-based change detection, skips when tab is hidden
@@ -60,7 +62,7 @@ Next.js 16 App Router with server components. Uses `@base-ui/react` (not Radix) 
 
 ### Config & Storage
 
-- **Project registry**: `~/.atlas-todo/config.json` — array of `{ name, path }` entries
+- **Project registry**: `~/.atlas-todo/config.json` — `{ projects: [{ name, path }], sync?: { url, publishableKey } }`
 - **Dashboard path**: `~/.atlas-todo/dashboard-path` — used by `/todo dashboard` to locate the dev server
 - **Skill install locations**: `~/.claude/skills/todo/` (Claude Code), `~/.agents/skills/todo/` (Codex)
 - **Task data**: each project's `TODO.md` + `DONE.md` (markdown, parsed on read, no database)

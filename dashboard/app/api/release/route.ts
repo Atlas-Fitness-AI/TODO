@@ -149,6 +149,7 @@ export async function POST(request: Request) {
     const logPath = join(projectPath, ".todo-activity.json")
     const existing = await readActivityLog(projectPath)
     const event: ActivityEvent = {
+      agent: "dashboard",
       date: new Date().toISOString(),
       action: "RELEASED",
       title: cleanVersion,

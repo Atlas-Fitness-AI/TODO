@@ -395,9 +395,13 @@ After every action that modifies TODO.md or DONE.md (`add`, `done`, `move`, `sta
   "action": "STARTED",
   "title": "Fix login bug",
   "detail": "Queued → Active",
-  "color": "text-blue-400"
+  "color": "text-blue-400",
+  "actor": "Brandon Muse",
+  "agent": "claude"
 }
 ```
+
+**Attribution fields:** `actor` is the output of `git config user.name` (fall back to the `$USER` environment variable, then `"unknown"`). `agent` is `"claude"` when running in Claude Code and `"codex"` when running in Codex. The dashboard's team sync uses both to show teammates who did what, so always include them.
 
 **Action types and colors:**
 - `ADDED` / `text-green-400` — new item added via `add`
@@ -412,7 +416,7 @@ After every action that modifies TODO.md or DONE.md (`add`, `done`, `move`, `sta
 
 **How to log:**
 1. Read the existing `.todo-activity.json` from the project root. If it doesn't exist or is invalid, start with an empty array `[]`.
-2. Create the new event object with the current ISO timestamp (`new Date().toISOString()` format).
+2. Create the new event object with the current ISO timestamp (`new Date().toISOString()` format) plus the `actor` and `agent` attribution fields.
 3. Prepend the new event to the front of the array (newest first).
 4. Trim the array to a maximum of 50 events.
 5. Write the array back to `.todo-activity.json` with `JSON.stringify(events, null, 2)`.
