@@ -24,6 +24,13 @@ export function useProjectPolling(initialProjects: ParsedProject[]): {
         })),
         activityCount: p.activity?.length ?? 0,
         latestActivity: p.activity?.[0]?.date ?? "",
+        // Team presence: pets and who is on which task must count as change too.
+        team: p.team
+          ? p.team.members.map((m) => `${m.userId}:${m.pet ?? ""}:${m.working ? 1 : 0}`).join(",") +
+            "|" +
+            Object.entries(p.team.activeBy).map(([t, u]) => `${t}=${u}`).sort().join(",")
+          : "",
+        syncError: p.syncError ?? "",
       }))
     )
   }, [])

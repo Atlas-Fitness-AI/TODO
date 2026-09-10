@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { Dashboard } from "@/components/dashboard"
 import { loadAllProjects } from "@/lib/projects"
 import { getSyncStatus } from "@/lib/sync/server"
+import pkg from "@/package.json"
 import { readActivityLog } from "@/lib/activity-log"
 
 export const dynamic = "force-dynamic"
@@ -35,6 +36,7 @@ export default async function Page() {
       defaultBranch={defaultBranch}
       syncStatus={syncStatus}
       defaultCardsCollapsed={defaultCardsCollapsed}
+      version={pkg.version}
     />
   )
 }

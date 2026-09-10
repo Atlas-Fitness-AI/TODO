@@ -46,6 +46,7 @@ interface AppSidebarProps {
   onSelectBranch: (branch: string | null) => void
   /** True when team sync is signed in; the add dialog then asks whether to share. */
   syncSignedIn?: boolean
+  version?: string
 }
 
 function BranchIcon() {
@@ -85,6 +86,7 @@ export function AppSidebar({
   selectedBranch,
   onSelectBranch,
   syncSignedIn = false,
+  version = "dev",
 }: AppSidebarProps) {
   // Team members who picked a pet, from whichever project carries presence.
   const crew = (projects.find((p) => p.team)?.team?.members ?? []).filter((m) => m.pet)
@@ -342,7 +344,7 @@ export function AppSidebar({
           )}
           <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
             <span>version</span>
-            <span>0.1.1</span>
+            <span>{version}</span>
           </div>
         </SidebarFooter>
       </Sidebar>

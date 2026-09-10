@@ -86,9 +86,10 @@ interface DashboardProps {
   defaultBranch?: string | null
   syncStatus?: SyncStatus | null
   defaultCardsCollapsed?: boolean
+  version?: string
 }
 
-export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch, syncStatus, defaultCardsCollapsed = true }: DashboardProps) {
+export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch, syncStatus, defaultCardsCollapsed = true, version }: DashboardProps) {
   const { projects, refresh } = useProjectPolling(initialProjects)
   const [cardsCollapsed, setCardsCollapsed] = useState(defaultCardsCollapsed)
   function toggleCardsCollapsed() {
@@ -329,6 +330,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
         selectedBranch={effectiveBranch}
         onSelectBranch={handleSelectBranch}
         syncSignedIn={syncStatus?.signedIn ?? false}
+        version={version}
       />
       <SidebarInset>
         {selectedProject ? (
