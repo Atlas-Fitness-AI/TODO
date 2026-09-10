@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import type { TodoItem, Priority, Status, PetKey } from "@/lib/types"
+import type { TodoItem, Priority, Status, PetKey, Presence } from "@/lib/types"
 import { Pet, petName } from "./pets"
+import { formatRelativeTime } from "@/lib/activity"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu"
 import { CardSpotlight } from "@/components/ui/card-spotlight"
 import {
   ContextMenu,
@@ -101,7 +103,7 @@ interface TodoCardProps {
   /** Hide the long-form fields until the card is clicked. */
   collapsed?: boolean
   /** Whoever moved this task into Active, with their pet (team sync). */
-  worker?: { name: string; pet: PetKey | null; away?: boolean } | null
+  worker?: { name: string; pet: PetKey | null; presence: Presence; lastSeen: string | null } | null
 }
 
 export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles, branches = [], collapsed = false, worker = null }: TodoCardProps) {
@@ -481,12 +483,40 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
               <span className="text-status-resolved/80">▲ {item.released}</span>
             )}
             {worker?.pet && status === "Active" && (
-              <span className="ml-auto flex items-center gap-2 text-primary/70" title={`${petName(worker.pet)} is on it with ${worker.name}`}>
-                <span className="normal-case tracking-normal">
-                  {petName(worker.pet)} {worker.away ? "is on it, but away" : "is on it"}
-                </span>
-                <Pet kind={worker.pet} state={worker.away ? "away" : "work"} size={20} />
-              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <button
+                      type="button"
+                      onClick={(e) => e.stopPropagation()}
+                      className="ml-auto flex items-center gap-2 text-primary/70 hover:text-primary transition-colors cursor-pointer"
+                      aria-label={`${petName(worker.pet)} belongs to ${worker.name}`}
+                    />
+                  }
+                >
+                  <span className="normal-case tracking-normal">
+                    {petName(worker.pet)} {worker.presence === "away" ? "is on it, but away" : "is on it"}
+                  </span>
+                  <Pet kind={worker.pet} state={worker.presence === "away" ? "away" : "work"} size={20} />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={6} className="w-60" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-3 px-2 py-2">
+                    <div className="flex h-10 w-10 shrink-0 items-end justify-center">
+                      <Pet kind={worker.pet} state={worker.presence === "away" ? "away" : "work"} size={32} />
+                    </div>
+                    <div className="min-w-0 leading-tight font-mono">
+                      <div className="text-[11px] font-medium uppercase tracking-wider truncate">
+                        {petName(worker.pet)} the {worker.pet}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground truncate">belongs to {worker.name}</div>
+                      <div className={`text-[9px] uppercase tracking-[0.15em] mt-1 ${worker.presence === "away" ? "text-status-queued/80" : "text-primary"}`}>
+                        {worker.presence}
+                        {worker.lastSeen && ` · seen ${formatRelativeTime(worker.lastSeen)}`}
+                      </div>
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         )}
