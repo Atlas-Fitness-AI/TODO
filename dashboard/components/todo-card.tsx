@@ -97,10 +97,22 @@ interface TodoCardProps {
   resolvedTitles?: Set<string>
   /** Known branch names in this project (for the "Move to branch" submenu) */
   branches?: string[]
+  /** Hide the long-form fields until the card is clicked. */
+  collapsed?: boolean
 }
 
-export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles, branches = [] }: TodoCardProps) {
+export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles, branches = [], collapsed = false }: TodoCardProps) {
   const priority = PRIORITY_CONFIG[item.priority]
+  // A collapsed card can be opened on its own. The override remembers which
+  // global state it was made under, so flipping the header toggle resets it.
+  const [override, setOverride] = useState<{ under: boolean; expanded: boolean } | null>(null)
+  const expanded = override?.under === collapsed ? override.expanded : false
+  const setExpanded = (next: boolean) => setOverride({ under: collapsed, expanded: next })
+  const hasDetails = Boolean(
+    item.description || item.context || item.acceptance || item.files?.length || item.dependencies || item.resolution || item.changelog
+  )
+  const collapsible = collapsed && hasDetails
+  const showDetails = !collapsed || expanded
   const hiddenMessage = getStableMessage(item.title)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [stepsExpanded, setStepsExpanded] = useState(false)
@@ -254,14 +266,31 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
             </div>
           }
         >
-          <div className="relative z-10 space-y-3">
+          <div
+            className={`relative z-10 space-y-3 ${collapsible ? "cursor-pointer" : ""}`}
+            onClick={() => {
+              if (collapsible) setExpanded(!expanded)
+            }}
+          >
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <span className="text-sm font-mono font-medium uppercase tracking-wide">{item.title}</span>
-          <span
-            className={`text-xs font-mono uppercase tracking-wider shrink-0 ${priority.color}`}
-          >
-            [{priority.label}]
+          <span className="flex items-center gap-2 shrink-0">
+            {collapsible && (
+              <svg
+                width="9"
+                height="9"
+                viewBox="0 0 9 9"
+                fill="none"
+                aria-hidden="true"
+                className={`text-muted-foreground/50 transition-transform ${expanded ? "rotate-180" : ""}`}
+              >
+                <path d="M1 3l3.5 3.5L8 3" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            )}
+            <span className={`text-xs font-mono uppercase tracking-wider ${priority.color}`}>
+              [{priority.label}]
+            </span>
           </span>
         </div>
 
@@ -280,14 +309,14 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         )}
 
         {/* Description */}
-        {item.description && (
+        {showDetails && item.description && (
           <p className="text-xs text-muted-foreground leading-relaxed">
             {item.description}
           </p>
         )}
 
         {/* Context */}
-        {item.context && (
+        {showDetails && item.context && (
           <div>
             <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
               context
@@ -299,7 +328,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         )}
 
         {/* Acceptance */}
-        {item.acceptance && (
+        {showDetails && item.acceptance && (
           <div>
             <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
               acceptance
@@ -321,7 +350,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         )}
 
         {/* File references */}
-        {item.files && item.files.length > 0 && (
+        {showDetails && item.files && item.files.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {item.files.map((file, i) => (
               <code
@@ -335,7 +364,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         )}
 
         {/* Dependencies */}
-        {item.dependencies && (
+        {showDetails && item.dependencies && (
           <div>
             <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
               depends on
@@ -441,7 +470,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         })()}
 
         {/* Resolution */}
-        {item.resolution && (
+        {showDetails && item.resolution && (
           <div>
             <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
               resolution

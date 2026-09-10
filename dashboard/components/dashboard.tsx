@@ -85,10 +85,18 @@ interface DashboardProps {
   defaultTheme?: string
   defaultBranch?: string | null
   syncStatus?: SyncStatus | null
+  defaultCardsCollapsed?: boolean
 }
 
-export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch, syncStatus }: DashboardProps) {
+export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch, syncStatus, defaultCardsCollapsed = true }: DashboardProps) {
   const { projects, refresh } = useProjectPolling(initialProjects)
+  const [cardsCollapsed, setCardsCollapsed] = useState(defaultCardsCollapsed)
+  function toggleCardsCollapsed() {
+    setCardsCollapsed((v) => {
+      document.cookie = `cards_collapsed=${!v}; path=/; max-age=${60 * 60 * 24 * 365}`
+      return !v
+    })
+  }
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
     defaultProjectIndex !== undefined && defaultProjectIndex !== null && defaultProjectIndex < initialProjects.length
       ? defaultProjectIndex
@@ -264,6 +272,13 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
         return
       }
 
+      // c: collapse / expand cards
+      if (key === "c" && selectedProject) {
+        e.preventDefault()
+        toggleCardsCollapsed()
+        return
+      }
+
       // n: open add task dialog
       if (key === "n" && selectedProject) {
         e.preventDefault()
@@ -381,6 +396,24 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     </svg>
                   </button>
                   <button
+                    onClick={toggleCardsCollapsed}
+                    className={`h-7 flex items-center gap-2 px-2 border-2 transition-colors ${cardsCollapsed ? "text-muted-foreground border-border hover:text-primary hover:border-primary/50" : "text-primary border-primary/50"}`}
+                    aria-label={cardsCollapsed ? "Expand cards" : "Collapse cards"}
+                    aria-pressed={!cardsCollapsed}
+                    title={cardsCollapsed ? "Expand cards (c)" : "Collapse cards (c)"}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                      {cardsCollapsed ? (
+                        <path d="M1.5 3.5L5 1l3.5 2.5M1.5 6.5L5 9l3.5-2.5" stroke="currentColor" strokeWidth="1.1" />
+                      ) : (
+                        <path d="M1.5 1L5 3.5 8.5 1M1.5 9L5 6.5 8.5 9" stroke="currentColor" strokeWidth="1.1" />
+                      )}
+                    </svg>
+                    <span className="hidden md:inline text-[10px] uppercase tracking-[0.15em]">
+                      {cardsCollapsed ? "expand" : "collapse"}
+                    </span>
+                  </button>
+                  <button
                     onClick={() => setHelpOpen(true)}
                     className="size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors font-mono text-xs"
                     aria-label="Help"
@@ -460,6 +493,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                                     focused={focusedCardIndex === index && status === selectedTab}
                                     resolvedTitles={resolvedTitles}
                                     branches={projectBranches}
+                                    collapsed={cardsCollapsed}
                                   />
                                 </div>
                               ))}
@@ -1025,6 +1059,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     {[
                       ["N", "Open add task dialog"],
                       ["/", "Focus search input"],
+                      ["c", "Collapse or expand all cards"],
                       ["?", "Open this help modal"],
                     ].map(([key, desc]) => (
                       <div key={key} className="flex gap-2 items-center">

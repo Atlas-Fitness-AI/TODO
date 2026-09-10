@@ -19,6 +19,7 @@ export default async function Page() {
   const defaultTheme = themeRaw && VALID_THEMES.includes(themeRaw) ? themeRaw : "tokyo"
   const branchRaw = cookieStore.get("selected_branch")?.value
   const defaultBranch = branchRaw ? decodeURIComponent(branchRaw) : null
+  const defaultCardsCollapsed = cookieStore.get("cards_collapsed")?.value !== "false"
   const projects = await loadAllProjects()
   const syncStatus = await getSyncStatus()
   for (const project of projects) {
@@ -33,6 +34,7 @@ export default async function Page() {
       defaultTheme={defaultTheme}
       defaultBranch={defaultBranch}
       syncStatus={syncStatus}
+      defaultCardsCollapsed={defaultCardsCollapsed}
     />
   )
 }
