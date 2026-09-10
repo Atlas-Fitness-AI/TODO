@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import {
   SidebarProvider,
   SidebarInset,
@@ -44,8 +44,8 @@ import { ChangelogDialog } from "./changelog-dialog"
 import { isPendingEntry } from "@/lib/changelog"
 import { toast } from "sonner"
 import { useProjectPolling } from "@/lib/use-project-polling"
-import { formatRelativeTime } from "@/lib/activity"
-import { ActivityItem, normalizeActivityColor, DOT_BG, type ActivityItemProps } from "./activity-item"
+import { normalizeActivityColor, DOT_BG, type ActivityItemProps } from "./activity-item"
+import { ActivityFeed } from "./activity-feed"
 import { TeamMenu } from "./team-menu"
 import type { SyncStatus } from "@/lib/sync/server"
 import type { ParsedProject, PetKey, Presence, Priority, Status, TodoItem } from "@/lib/types"
@@ -551,38 +551,15 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                         </svg>
                       </button>
                   </div>
-                  {activityEvents.length > 0 ? (
-                    <div className="space-y-0">
-                      {activityEvents.map((event, i) => {
-                        const props: ActivityItemProps = {
-                          time: formatRelativeTime(event.date),
-                          date: event.date,
-                          action: event.action,
-                          title: event.title,
-                          detail: event.actor ? `${event.actor} · ${event.detail}` : event.detail,
-                          color: event.color,
-                        }
-                        return (
-                          <ActivityItem
-                            key={`${event.title}-${event.action}-${i}`}
-                            {...props}
-                            onClick={() => setSelectedEvent(props)}
-                          />
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-1 items-center justify-center border border-dashed border-muted-foreground/30">
-                      <div className="text-center space-y-2">
-                        <div className="text-xs font-mono text-primary/60 glow-rose">
-                          &gt; NO ACTIVITY
-                        </div>
-                        <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
-                          events appear as tasks are added and moved
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  <ActivityFeed
+                    events={activityEvents}
+                    members={selectedProject?.team?.members}
+                    me={syncStatus?.displayName ?? null}
+                    onSelect={(props) => {
+                      setMobileActivityOpen(false)
+                      setSelectedEvent(props)
+                    }}
+                  />
                 </div>
                 </ScrollArea>
               </div>
@@ -642,41 +619,16 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
           </SheetHeader>
           <ScrollArea className="h-full">
             <div className="p-4 flex flex-col min-h-[calc(100%-1px)]">
-              {activityEvents.length > 0 ? (
-                <div className="space-y-0">
-                  {activityEvents.map((event, i) => {
-                    const props: ActivityItemProps = {
-                      time: formatRelativeTime(event.date),
-                      date: event.date,
-                      action: event.action,
-                      title: event.title,
-                      detail: event.actor ? `${event.actor} · ${event.detail}` : event.detail,
-                      color: event.color,
-                    }
-                    return (
-                      <ActivityItem
-                        key={`${event.title}-${event.action}-${i}-mobile`}
-                        {...props}
-                        onClick={() => {
-                          setMobileActivityOpen(false)
-                          setSelectedEvent(props)
-                        }}
-                      />
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-1 items-center justify-center border border-dashed border-muted-foreground/30">
-                  <div className="text-center space-y-2 px-4">
-                    <div className="text-xs font-mono text-primary/60 glow-rose">
-                      &gt; NO ACTIVITY
-                    </div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
-                      events appear as tasks are added and moved
-                    </p>
-                  </div>
-                </div>
-              )}
+              <ActivityFeed
+                    events={activityEvents}
+                    members={selectedProject?.team?.members}
+                    me={syncStatus?.displayName ?? null}
+                    onSelect={(props) => {
+                      setMobileActivityOpen(false)
+                      setSelectedEvent(props)
+                    }}
+                    compact
+                  />
             </div>
           </ScrollArea>
         </SheetContent>
