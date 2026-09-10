@@ -107,7 +107,7 @@ export function TeamMenu({ status }: { status: SyncStatus | null }) {
               <p className="px-2 pb-2 text-[10px] font-mono text-muted-foreground/70">
                 It works alongside you on every task you start, where the whole team can see it.
               </p>
-              <div className="grid grid-cols-4 gap-1 px-2 pb-2">
+              <div className="grid grid-cols-4 gap-1 px-2 pb-2 max-h-72 overflow-y-auto">
                 {PET_KEYS.map((key) => {
                   const selected = current === key
                   return (

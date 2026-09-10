@@ -38,7 +38,9 @@ export interface TodoSection {
   items: TodoItem[]
 }
 
-export type PetKey = "cat" | "dog" | "frog" | "octopus" | "owl" | "snail" | "robot" | "dragon"
+export type PetKey =
+  | "cat" | "dog" | "frog" | "octopus" | "owl" | "snail" | "robot" | "dragon"
+  | "penguin" | "ghost" | "crab" | "bat"
 
 export type Presence = "working" | "away" | "idle"
 

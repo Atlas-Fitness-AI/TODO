@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerAuth } from "@/lib/sync/server"
 
-const PETS = ["cat", "dog", "frog", "octopus", "owl", "snail", "robot", "dragon"]
+const PETS = ["cat", "dog", "frog", "octopus", "owl", "snail", "robot", "dragon", "penguin", "ghost", "crab", "bat"]
 
 // Update the signed-in member's own profile (team sync only).
 export async function PATCH(request: Request) {
