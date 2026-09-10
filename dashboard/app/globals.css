@@ -473,7 +473,6 @@
 }
 
 .dark .scanlines::after,
-.abyss .scanlines::after,
 .crt .scanlines::after,
 .synth .scanlines::after {
   content: "";
