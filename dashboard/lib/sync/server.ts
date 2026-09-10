@@ -11,6 +11,8 @@ export interface SyncStatus {
   configured: boolean
   signedIn: boolean
   displayName: string | null
+  userId: string | null
+  pet: string | null
 }
 
 let cachedAuth: { auth: AuthedClient; expires: number } | null = null
@@ -27,11 +29,13 @@ export async function getServerAuth(): Promise<AuthedClient | null> {
 
 export async function getSyncStatus(): Promise<SyncStatus> {
   const config = await loadSyncConfig()
-  if (!config) return { configured: false, signedIn: false, displayName: null }
+  if (!config) return { configured: false, signedIn: false, displayName: null, userId: null, pet: null }
   const stored = await readStoredSession()
-  if (!stored) return { configured: true, signedIn: false, displayName: null }
+  if (!stored) return { configured: true, signedIn: false, displayName: null, userId: null, pet: null }
   const auth = await getServerAuth()
-  return { configured: true, signedIn: auth !== null, displayName: auth?.displayName ?? stored.user.name ?? null }
+  if (!auth) return { configured: true, signedIn: false, displayName: stored.user.name ?? null, userId: null, pet: null }
+  const { data } = await auth.client.from("profiles").select("pet").eq("id", auth.user.id).maybeSingle()
+  return { configured: true, signedIn: true, displayName: auth.displayName, userId: auth.user.id, pet: (data?.pet as string | null) ?? null }
 }
 
 const inFlight = new Map<string, Promise<SyncResult>>()

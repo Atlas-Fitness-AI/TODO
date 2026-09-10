@@ -20,6 +20,7 @@ const THEMES = [
   { value: "ember", label: "Ember" },
   { value: "dawn", label: "Dawn" },
   { value: "abyss", label: "Abyss" },
+  { value: "mono", label: "Mono" },
 ] as const
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
@@ -59,6 +60,15 @@ function ThemeIcon({ theme }: { theme: string }) {
           strokeWidth="1.2"
           strokeLinecap="round"
         />
+      </svg>
+    )
+  }
+  if (theme === "mono") {
+    // A plain square, half filled.
+    return (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="1.5" y="1.5" width="9" height="9" stroke="currentColor" strokeWidth="1.2" />
+        <rect x="1.5" y="1.5" width="4.5" height="9" fill="currentColor" />
       </svg>
     )
   }

@@ -48,7 +48,7 @@ import { formatRelativeTime } from "@/lib/activity"
 import { ActivityItem, normalizeActivityColor, DOT_BG, type ActivityItemProps } from "./activity-item"
 import { TeamMenu } from "./team-menu"
 import type { SyncStatus } from "@/lib/sync/server"
-import type { ParsedProject, Priority, Status, TodoItem } from "@/lib/types"
+import type { ParsedProject, PetKey, Priority, Status, TodoItem } from "@/lib/types"
 
 const TAB_ORDER: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 
@@ -192,6 +192,16 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
   }, [selectedProject, effectiveBranch])
 
   const activityEvents = selectedProject?.activity ?? []
+
+  // Who is on an Active task, for the pet on its card.
+  function workerFor(item: TodoItem): { name: string; pet: PetKey | null } | null {
+    const team = selectedProject?.team
+    if (!team || !item.id) return null
+    const userId = team.activeBy[item.id]
+    if (!userId) return null
+    const member = team.members.find((m) => m.userId === userId)
+    return member ? { name: member.name, pet: member.pet } : null
+  }
 
   useEffect(() => {
     document.title = selectedProject
@@ -494,6 +504,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                                     resolvedTitles={resolvedTitles}
                                     branches={projectBranches}
                                     collapsed={cardsCollapsed}
+                                    worker={workerFor(item)}
                                   />
                                 </div>
                               ))}

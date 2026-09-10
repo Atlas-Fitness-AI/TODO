@@ -36,6 +36,7 @@ import { toast } from "sonner"
 import type { ParsedProject } from "@/lib/types"
 import { getActiveItemCount } from "@/lib/parser"
 import { AddProjectDialog } from "@/components/add-project-dialog"
+import { Pet, petName } from "@/components/pets"
 
 interface AppSidebarProps {
   projects: ParsedProject[]
@@ -85,6 +86,8 @@ export function AppSidebar({
   onSelectBranch,
   syncSignedIn = false,
 }: AppSidebarProps) {
+  // Team members who picked a pet, from whichever project carries presence.
+  const crew = (projects.find((p) => p.team)?.team?.members ?? []).filter((m) => m.pet)
   const router = useRouter()
   const { isMobile, setOpenMobile } = useSidebar()
   const [removeTarget, setRemoveTarget] = useState<{
@@ -304,7 +307,22 @@ export function AppSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-t border-border px-4 py-3">
+        <SidebarFooter className="border-t border-border px-4 py-3 space-y-3">
+          {crew.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">crew</div>
+              <div className="flex flex-wrap items-end gap-3">
+                {crew.map((m) => (
+                  <div key={m.userId} className="flex flex-col items-center gap-1" title={`${m.name} · ${petName(m.pet)}${m.working ? " · working" : " · idle"}`}>
+                    <Pet kind={m.pet!} state={m.working ? "work" : "sleep"} size={20} title={`${petName(m.pet)} (${m.name})`} />
+                    <span className={`text-[9px] font-mono uppercase tracking-wider truncate max-w-14 ${m.working ? "text-primary" : "text-muted-foreground/50"}`}>
+                      {m.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
             <span>version</span>
             <span>0.1.1</span>

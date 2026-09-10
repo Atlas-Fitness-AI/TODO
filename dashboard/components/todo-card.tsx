@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import type { TodoItem, Priority, Status } from "@/lib/types"
+import type { TodoItem, Priority, Status, PetKey } from "@/lib/types"
+import { Pet, petName } from "./pets"
 import { CardSpotlight } from "@/components/ui/card-spotlight"
 import {
   ContextMenu,
@@ -99,9 +100,11 @@ interface TodoCardProps {
   branches?: string[]
   /** Hide the long-form fields until the card is clicked. */
   collapsed?: boolean
+  /** Whoever moved this task into Active, with their pet (team sync). */
+  worker?: { name: string; pet: PetKey | null } | null
 }
 
-export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles, branches = [], collapsed = false }: TodoCardProps) {
+export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles, branches = [], collapsed = false, worker = null }: TodoCardProps) {
   const priority = PRIORITY_CONFIG[item.priority]
   // A collapsed card can be opened on its own. The override remembers which
   // global state it was made under, so flipping the header toggle resets it.
@@ -275,8 +278,19 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <span className="text-sm font-mono font-medium uppercase tracking-wide">{item.title}</span>
-          <span className={`text-xs font-mono uppercase tracking-wider shrink-0 ${priority.color}`}>
-            [{priority.label}]
+          <span className="flex items-center gap-3 shrink-0">
+            {worker?.pet && status === "Active" && (
+              <Pet
+                kind={worker.pet}
+                state="work"
+                size={20}
+                title={`${petName(worker.pet)} is on it with ${worker.name}`}
+                className="-mt-1"
+              />
+            )}
+            <span className={`text-xs font-mono uppercase tracking-wider ${priority.color}`}>
+              [{priority.label}]
+            </span>
           </span>
         </div>
 

@@ -198,7 +198,7 @@ The dashboard's local Next.js server reads `TODO.md` files directly from disk �
 - Clear all tasks in a status group with the "—" button next to "+"
 - Move tasks between statuses, change priority, or move to another branch via right-click context menu on cards
 - Search and filter tasks by priority, category, or keyword
-- Nine color themes (Light, Dark, Tokyo, CRT, Rosé, Synth, Ember, Dawn, Abyss) with cookie-based persistence
+- Ten color themes (Light, Dark, Tokyo, CRT, Rosé, Synth, Ember, Dawn, Abyss, Mono) with cookie-based persistence
 - Auto-refresh — dashboard updates within seconds when `TODO.md` changes externally
 - Right-click projects to rename, remove, copy path, open in Finder, or open in Terminal
 - Keyboard shortcuts — `1-5` switch tabs, `j/k` navigate cards, `n` add task, `/` search, `?` help

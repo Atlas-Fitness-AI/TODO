@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistMono.variable} font-mono antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="tokyo" themes={["tokyo", "crt", "rose", "synth", "ember", "dawn", "abyss", "light", "dark"]}>
+        <ThemeProvider attribute="class" defaultTheme="tokyo" themes={["tokyo", "crt", "rose", "synth", "ember", "dawn", "abyss", "mono", "light", "dark"]}>
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster position="bottom-right" />
         </ThemeProvider>

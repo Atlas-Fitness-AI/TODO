@@ -2,7 +2,7 @@ import { readFile } from "fs/promises"
 import { existsSync } from "fs"
 import { join } from "path"
 import { homedir } from "os"
-import type { AppConfig, ParsedProject, ProjectConfig, SyncConfig } from "./types"
+import type { AppConfig, ParsedProject, ProjectConfig, SyncConfig, TeamMember, TeamPresence, PetKey } from "./types"
 import { parseTodoMarkdown, parseDoneMarkdown } from "./parser"
 import { getProjectRemote } from "./git-remote"
 
@@ -133,6 +133,36 @@ export async function loadAllProjects(): Promise<ParsedProject[]> {
     if (!remotes.has(remote)) team.push({ id: -1, remote_url: remote, name: pc.name })
   }
 
+  // Presence: every member (with pet) and who is on which Active task.
+  let presenceByProject = new Map<number, TeamPresence>()
+  try {
+    const [{ data: profiles }, { data: active }] = await Promise.all([
+      auth.client.from("profiles").select("id, display_name, pet"),
+      auth.client.from("tasks").select("id, project_id, active_by").eq("status", "Active").eq("archived", false).not("active_by", "is", null),
+    ])
+    const workingIds = new Set((active ?? []).map((t) => t.active_by as string))
+    const members: TeamMember[] = (profiles ?? []).map((p) => ({
+      userId: p.id as string,
+      name: (p.display_name as string | null) ?? "teammate",
+      pet: (p.pet as PetKey | null) ?? null,
+      working: workingIds.has(p.id as string),
+    }))
+    presenceByProject = new Map()
+    for (const t of team) {
+      presenceByProject.set(t.id, { members, activeBy: {} })
+    }
+    for (const row of active ?? []) {
+      const entry = presenceByProject.get(row.project_id as number)
+      if (entry) entry.activeBy[row.id as string] = row.active_by as string
+    }
+    // Projects registered by this sync pass (id -1) still get the member list.
+    for (const t of team) {
+      if (!presenceByProject.has(t.id)) presenceByProject.set(t.id, { members, activeBy: {} })
+    }
+  } catch {
+    // Presence is decoration; never block the board on it.
+  }
+
   const synced = await Promise.all(
     team.map(async (t): Promise<ParsedProject | null> => {
       const local = localByRemote.get(t.remote_url)
@@ -145,7 +175,8 @@ export async function loadAllProjects(): Promise<ParsedProject[]> {
       }
       const project = await loadProject({ name: local?.name ?? t.name, path })
       if (!project) return null
-      return { ...project, remote: t.remote_url, synced: true, ...(syncError && { syncError }) }
+      const presence = presenceByProject.get(t.id)
+      return { ...project, remote: t.remote_url, synced: true, ...(syncError && { syncError }), ...(presence && { team: presence }) }
     })
   )
 

@@ -38,6 +38,22 @@ export interface TodoSection {
   items: TodoItem[]
 }
 
+export type PetKey = "cat" | "dog" | "frog" | "octopus" | "owl" | "snail" | "robot" | "dragon"
+
+export interface TeamMember {
+  userId: string
+  name: string
+  pet: PetKey | null
+  /** True when this member has any Active task across the team. */
+  working: boolean
+}
+
+export interface TeamPresence {
+  members: TeamMember[]
+  /** Task id -> user id of whoever moved it into Active. */
+  activeBy: Record<string, string>
+}
+
 export interface ParsedProject {
   name: string
   path: string
@@ -47,6 +63,8 @@ export interface ParsedProject {
   synced?: boolean
   /** Set when the last sync attempt failed; the files shown may be stale. */
   syncError?: string
+  /** Team members and who is working on which task (team sync only). */
+  team?: TeamPresence
   sections: TodoSection[]
   activity?: ActivityEvent[]
 }
