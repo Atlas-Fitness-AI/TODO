@@ -278,19 +278,8 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <span className="text-sm font-mono font-medium uppercase tracking-wide">{item.title}</span>
-          <span className="flex items-center gap-3 shrink-0">
-            {worker?.pet && status === "Active" && (
-              <Pet
-                kind={worker.pet}
-                state="work"
-                size={20}
-                title={`${petName(worker.pet)} is on it with ${worker.name}`}
-                className="-mt-1"
-              />
-            )}
-            <span className={`text-xs font-mono uppercase tracking-wider ${priority.color}`}>
-              [{priority.label}]
-            </span>
+          <span className={`text-xs font-mono uppercase tracking-wider shrink-0 ${priority.color}`}>
+            [{priority.label}]
           </span>
         </div>
 
@@ -482,14 +471,20 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         )}
 
         {/* Dates */}
-        {(item.added || item.started || item.completed || item.author) && (
-          <div className="flex flex-wrap gap-4 text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider pt-2 border-t border-border/30">
+        {(item.added || item.started || item.completed || item.author || (worker?.pet && status === "Active")) && (
+          <div className="flex flex-wrap items-center gap-4 text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider pt-2 border-t border-border/30">
             {item.author && <span className="text-accent-special/80">by {item.author}</span>}
             {item.added && <span>added {item.added}</span>}
             {item.started && <span>started {item.started}</span>}
             {item.completed && <span>done {item.completed}</span>}
             {item.released && (
               <span className="text-status-resolved/80">▲ {item.released}</span>
+            )}
+            {worker?.pet && status === "Active" && (
+              <span className="ml-auto flex items-center gap-2 text-primary/70" title={`${petName(worker.pet)} is on it with ${worker.name}`}>
+                <span className="normal-case tracking-normal">{petName(worker.pet)} is on it</span>
+                <Pet kind={worker.pet} state="work" size={20} />
+              </span>
             )}
           </div>
         )}
