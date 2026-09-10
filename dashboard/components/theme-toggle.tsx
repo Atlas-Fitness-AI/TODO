@@ -19,6 +19,7 @@ const THEMES = [
   { value: "synth", label: "Synth" },
   { value: "ember", label: "Ember" },
   { value: "dawn", label: "Dawn" },
+  { value: "abyss", label: "Abyss" },
 ] as const
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
@@ -58,6 +59,18 @@ function ThemeIcon({ theme }: { theme: string }) {
           strokeWidth="1.2"
           strokeLinecap="round"
         />
+      </svg>
+    )
+  }
+  if (theme === "abyss") {
+    // Sonar ping: a point of light and two rings fading into the deep.
+    return (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="1.3" fill="currentColor" />
+        <path d="M2.8 6a3.2 3.2 0 0 1 3.2-3.2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+        <path d="M6 9.2A3.2 3.2 0 0 1 2.8 6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.55" />
+        <path d="M1 6a5 5 0 0 1 5-5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.7" />
+        <path d="M6 11a5 5 0 0 1-5-5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.3" />
       </svg>
     )
   }

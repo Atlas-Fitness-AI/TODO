@@ -15,7 +15,7 @@ export default async function Page() {
     ? decodeURIComponent(cookieStore.get("selected_tab")!.value)
     : null
   const themeRaw = cookieStore.get("theme")?.value
-  const VALID_THEMES = ["light", "dark", "tokyo", "crt", "rose", "synth", "ember", "dawn"]
+  const VALID_THEMES = ["light", "dark", "tokyo", "crt", "rose", "synth", "ember", "dawn", "abyss"]
   const defaultTheme = themeRaw && VALID_THEMES.includes(themeRaw) ? themeRaw : "tokyo"
   const branchRaw = cookieStore.get("selected_branch")?.value
   const defaultBranch = branchRaw ? decodeURIComponent(branchRaw) : null
