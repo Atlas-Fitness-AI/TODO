@@ -105,7 +105,7 @@ export async function loadAllProjects(): Promise<ParsedProject[]> {
   const auth = await getServerAuth()
   if (!auth) return loadLocalProjects(config.projects)
 
-  const { listTeamProjects, cachePathForRemote } = await import("./sync")
+  const { listTeamProjects, cachePathForRemote, isSyncDisabled } = await import("./sync")
   let team: { id: number; remote_url: string; name: string }[]
   try {
     team = await listTeamProjects(auth.client)
@@ -115,11 +115,18 @@ export async function loadAllProjects(): Promise<ParsedProject[]> {
 
   const localByRemote = new Map<string, ProjectConfig>()
   const unsynced: ProjectConfig[] = []
+  const optedOut = new Set<string>()
   for (const pc of config.projects) {
     const remote = await getProjectRemote(pc.path)
-    if (remote) localByRemote.set(remote, pc)
-    else unsynced.push(pc)
+    if (!remote || (await isSyncDisabled(pc.path))) {
+      unsynced.push(pc)
+      if (remote) optedOut.add(remote)
+    } else {
+      localByRemote.set(remote, pc)
+    }
   }
+  // A local checkout that opted out shadows the team's copy of that project.
+  team = team.filter((t) => !optedOut.has(t.remote_url))
   // Local checkouts the team hasn't registered yet get registered by syncing.
   const remotes = new Set(team.map((t) => t.remote_url))
   for (const [remote, pc] of localByRemote) {

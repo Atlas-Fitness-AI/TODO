@@ -113,4 +113,6 @@ Use one or more of these tags. Add project-specific categories below the default
 ```yaml
 archive: true
 archive_file: DONE.md
+# Set to false to keep this project out of team sync (local files only).
+sync: true
 ```

@@ -239,7 +239,8 @@ One Supabase project equals one team. Everyone who signs in can read and write e
 
 3. Enable GitHub sign-in. Create a GitHub OAuth app (Settings → Developer settings → OAuth Apps) with callback URL `https://<your-project-ref>.supabase.co/auth/v1/callback`, then enable the GitHub provider in Supabase under Authentication → Sign In / Providers with the app's client ID and secret.
 4. Under Authentication → URL Configuration, set the Site URL to `http://localhost:3000` and add `http://localhost:300*/**` to Redirect URLs.
-5. Add the project URL and publishable key to `~/.atlas-todo/config.json`:
+5. **Lock down membership.** Under Authentication → Sign In / Providers, turn off "Allow new users to sign up." Otherwise anyone holding your URL and publishable key could join with any GitHub account. Add teammates by inviting their email from the Users page before their first sign-in; the invite must match their GitHub email.
+6. Add the project URL and publishable key to `~/.atlas-todo/config.json`:
 
    ```json
    {
@@ -251,7 +252,7 @@ One Supabase project equals one team. Everyone who signs in can read and write e
    }
    ```
 
-6. Sign in from a terminal and import your projects:
+7. Sign in from a terminal and import your projects:
 
    ```bash
    ~/.atlas-todo/bin/todo login
@@ -260,7 +261,19 @@ One Supabase project equals one team. Everyone who signs in can read and write e
 
    Add `~/.atlas-todo/bin` to your `PATH` if you want to type just `todo`. The first sync of a project imports whatever is in its files. Existing task files are matched by title so nothing duplicates.
 
-Each teammate repeats steps 5 and 6 with the same URL and key and their own GitHub account. Projects are matched across machines by their git `origin` remote.
+Each teammate repeats steps 6 and 7 with the same URL and key and their own GitHub account. Projects are matched across machines by their git `origin` remote.
+
+### Keeping a project local
+
+Sync applies to every project on the machine that has a git remote. To keep one out of the team database, set `sync: false` in the config block at the bottom of its `TODORULES.md`:
+
+```yaml
+archive: true
+archive_file: DONE.md
+sync: false
+```
+
+The skill, the `todo` command, and the dashboard all treat that project as local-only, exactly as if sync were not configured.
 
 ### The `todo` command
 

@@ -31,7 +31,8 @@ When the user has configured team sync, tasks live in a shared database and `TOD
 
 - **Before reading** task files, run `~/.atlas-todo/bin/todo sync` so you start from the team's current state.
 - **After every write** to `TODO.md`, `DONE.md`, or `.todo-activity.json` (`add`, `done`, `move`, `start`, `next`, `stuck`, `release`, step toggles, `init`, `update`), run `~/.atlas-todo/bin/todo sync` again so your edit reaches the team. Do this once at the end of the command, after all file edits.
-- If sync prints "Team sync not configured", the project is local-only; skip it silently from then on in this session.
+- If sync prints "Team sync not configured" or "Team sync disabled for this project", the project is local-only; skip it silently from then on in this session.
+- A project opts out with `sync: false` in the config block of its `TODORULES.md`. Respect it: don't run sync there, and don't remove the setting during `update`.
 - If sync fails with "Not signed in", tell the user to run `todo login` in a terminal, then continue with the local files.
 - If sync refuses because a push would delete many tasks, do not add `--force` yourself. Show the message to the user and let them decide.
 - **Preserve ids.** Synced items carry an `<!-- id: ... -->` comment on the line after their heading. Keep it exactly as is when editing or moving an item, including moves into the archive file. Never invent ids for new items; sync assigns them.
@@ -91,7 +92,7 @@ Use this when the todo skill itself has been updated and you want to pull in the
 2. Read the project's current `./TODORULES.md`.
 3. Extract any project-specific customizations from the current file:
    - **Project-Specific Categories**: Any categories added under that section.
-   - **Config overrides**: Current `archive` and `archive_file` values.
+   - **Config overrides**: Current `archive`, `archive_file`, and `sync` values.
 4. Write the fresh template to `./TODORULES.md`, then re-apply the extracted customizations:
    - Re-insert project-specific categories under the "Project-Specific Categories" section.
    - Restore the project's config values in the yaml block.

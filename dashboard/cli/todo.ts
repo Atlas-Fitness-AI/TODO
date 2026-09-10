@@ -17,7 +17,7 @@
 import { resolve } from "path"
 import { loadConfig, loadSyncConfig } from "../lib/projects"
 import { getAuthedClient, login, clearSession, readStoredSession } from "../lib/sync/session"
-import { syncProject, SyncError, type SyncResult } from "../lib/sync"
+import { syncProject, SyncError, SyncDisabledError, type SyncResult } from "../lib/sync"
 
 const args = process.argv.slice(2)
 const command = args[0] ?? "help"
@@ -124,6 +124,10 @@ async function main() {
           })
           out(summarize(result))
         } catch (err) {
+          if (err instanceof SyncDisabledError) {
+            out(`${path}: ${err.message}`)
+            continue
+          }
           failed = true
           process.stderr.write(`${path}: ${(err as Error).message}\n`)
         }

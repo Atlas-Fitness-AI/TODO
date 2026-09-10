@@ -113,6 +113,24 @@ async function writeState(projectPath: string, state: SyncState): Promise<void> 
   await writeAtomic(join(projectPath, STATE_FILE), JSON.stringify(state, null, 2) + "\n")
 }
 
+/**
+ * A project opts out of team sync with `sync: false` in the config block of
+ * its TODORULES.md. Absent means opted in.
+ */
+export async function isSyncDisabled(projectPath: string): Promise<boolean> {
+  const rules = await readIfExists(join(projectPath, "TODORULES.md"))
+  if (!rules) return false
+  const block = rules.match(/```ya?ml\n([\s\S]*?)```/)
+  const body = block ? block[1] : rules
+  return /^\s*sync:\s*false\s*(#.*)?$/m.test(body)
+}
+
+export class SyncDisabledError extends SyncError {
+  constructor() {
+    super("Team sync disabled for this project (sync: false in TODORULES.md)")
+  }
+}
+
 export function newTaskId(): string {
   return randomBytes(6).toString("hex")
 }
@@ -371,6 +389,8 @@ export interface SyncOptions {
 export async function syncProject(auth: AuthedClient, projectPath: string, opts: SyncOptions = {}): Promise<SyncResult> {
   const log = opts.log ?? (() => {})
   const { client, user } = auth
+
+  if (await isSyncDisabled(projectPath)) throw new SyncDisabledError()
 
   const remote = opts.remote ?? (await getProjectRemote(projectPath))
   if (!remote) throw new SyncError(`${projectPath} has no git origin remote; team sync needs one to identify the project`)
