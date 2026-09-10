@@ -8,10 +8,14 @@ export interface Step {
 }
 
 export interface TodoItem {
+  /** Stable id assigned by team sync; written to markdown as `<!-- id: ... -->`. */
+  id?: string
   title: string
   priority: Priority
   category: string[]
   branch?: string
+  /** Display name of whoever created the task (team sync). */
+  author?: string
   description?: string
   files?: string[]
   context?: string
@@ -39,6 +43,10 @@ export interface ParsedProject {
   path: string
   /** Normalized git remote (e.g. github.com/org/repo). Absent when not a git repo or no origin. */
   remote?: string
+  /** True when this project is kept in step with the team database. */
+  synced?: boolean
+  /** Set when the last sync attempt failed; the files shown may be stale. */
+  syncError?: string
   sections: TodoSection[]
   activity?: ActivityEvent[]
 }

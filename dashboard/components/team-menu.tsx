@@ -5,27 +5,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import type { TeamSync } from "@/lib/use-team-sync"
-
-const STATUS_LABEL: Record<TeamSync["status"], string> = {
-  off: "local",
-  "signed-out": "sign in",
-  connecting: "connecting",
-  live: "live",
-  error: "sync error",
-}
-
-const STATUS_DOT: Record<TeamSync["status"], string> = {
-  off: "bg-muted-foreground/40",
-  "signed-out": "bg-muted-foreground/60",
-  connecting: "bg-status-queued animate-pulse",
-  live: "bg-status-resolved",
-  error: "bg-status-blocked",
-}
+import type { SyncStatus } from "@/lib/sync/server"
 
 function PeopleIcon() {
   return (
@@ -39,26 +21,15 @@ function PeopleIcon() {
 }
 
 /**
- * Header control for team sync. Hidden entirely when sync is not configured,
- * so a local-only dashboard looks exactly as it did before.
+ * Header indicator for team sync. Hidden when sync is not configured, so a
+ * local-only dashboard looks exactly as it did before. Sign-in happens in a
+ * terminal (`todo login`) because the dashboard server holds the session.
  */
-export function TeamMenu({ sync }: { sync: TeamSync }) {
-  if (sync.status === "off") return null
+export function TeamMenu({ status }: { status: SyncStatus | null }) {
+  if (!status || !status.configured) return null
 
-  const label = sync.status === "live" && sync.profile?.display_name ? sync.profile.display_name : STATUS_LABEL[sync.status]
-
-  if (sync.status === "signed-out") {
-    return (
-      <button
-        onClick={() => void sync.signIn()}
-        className="h-7 flex items-center gap-2 px-2 text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors"
-        aria-label="Sign in to team sync"
-      >
-        <PeopleIcon />
-        <span className="hidden md:inline text-[10px] uppercase tracking-[0.15em]">sign in</span>
-      </button>
-    )
-  }
+  const dot = status.signedIn ? "bg-status-resolved" : "bg-status-blocked"
+  const label = status.signedIn ? status.displayName ?? "signed in" : "not signed in"
 
   return (
     <DropdownMenu>
@@ -70,32 +41,30 @@ export function TeamMenu({ sync }: { sync: TeamSync }) {
           />
         }
       >
-        <span className={`size-1.5 rounded-full ${STATUS_DOT[sync.status]}`} />
+        <span className={`size-1.5 rounded-full ${dot}`} />
         <span className="hidden md:inline text-[10px] uppercase tracking-[0.15em] max-w-32 truncate">{label}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={8} className="w-56">
+      <DropdownMenuContent align="end" sideOffset={8} className="w-64">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
             team sync
           </DropdownMenuLabel>
-          <div className="px-2 pb-2 space-y-1 text-[11px] font-mono">
+          <div className="px-2 pb-2 space-y-2 text-[11px] font-mono">
             <div className="flex items-center gap-2">
-              <span className={`size-1.5 rounded-full ${STATUS_DOT[sync.status]}`} />
-              <span className="uppercase tracking-wider">{STATUS_LABEL[sync.status]}</span>
+              <PeopleIcon />
+              <span className="uppercase tracking-wider">{label}</span>
             </div>
-            {sync.profile?.display_name && (
-              <div className="text-muted-foreground truncate">signed in as {sync.profile.display_name}</div>
+            {status.signedIn ? (
+              <p className="text-muted-foreground">
+                Tasks live in the team database. Files refresh every few seconds and your edits push automatically.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                Run <code className="text-primary/80">todo login</code> in a terminal, then reload. Until then this dashboard shows local files only.
+              </p>
             )}
-            {sync.error && <div className="text-status-blocked break-words">{sync.error}</div>}
           </div>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => void sync.signOut()}
-          className="text-[11px] font-mono uppercase tracking-[0.15em]"
-        >
-          sign out
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

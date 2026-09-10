@@ -103,6 +103,62 @@ export function parseTodoMarkdown(content: string): {
   return { projectName, sections }
 }
 
+const ID_COMMENT = /<!--\s*id:\s*([A-Za-z0-9_-]+)\s*-->/
+
+/** Parse one `### Title` block into a TodoItem, or null when it has no usable title. */
+function parseItemBlock(block: string, status: Status): TodoItem | null {
+  const lines = block.split("\n")
+  const titleMatch = lines[0]?.match(/^###\s+(.+)/)
+  if (!titleMatch) return null
+
+  const title = titleMatch[1].trim()
+  if (!title) return null
+
+  const idMatch = block.match(ID_COMMENT)
+  const fields = parseFields(lines.slice(1))
+
+  const priority = VALID_PRIORITIES.includes(fields.priority as Priority)
+    ? (fields.priority as Priority)
+    : "Medium"
+
+  const category = fields.category
+    ? fields.category.split(",").map((c: string) => c.trim()).filter(Boolean)
+    : []
+
+  const files = fields.files
+    ? fields.files
+        .split(",")
+        .map((f: string) => f.trim().replace(/`/g, ""))
+        .filter(Boolean)
+    : undefined
+
+  const steps = fields.steps ? parseSteps(fields.steps) : undefined
+
+  return {
+    ...(idMatch && { id: idMatch[1] }),
+    title,
+    priority,
+    category,
+    status,
+    ...(fields.branch && { branch: fields.branch }),
+    ...(fields.author && { author: fields.author }),
+    ...(fields.description && { description: fields.description }),
+    ...(files && files.length > 0 && { files }),
+    ...(fields.context && { context: fields.context }),
+    ...(fields.acceptance && { acceptance: fields.acceptance }),
+    ...(fields.code && { code: fields.code }),
+    ...(fields.dependencies && { dependencies: fields.dependencies }),
+    ...(steps && steps.length > 0 && { steps }),
+    ...(fields.added && { added: fields.added }),
+    ...(fields.started && { started: fields.started }),
+    ...(fields.completed && { completed: fields.completed }),
+    ...(fields.resolution && { resolution: fields.resolution }),
+    ...(fields.blocked && { blocked: fields.blocked }),
+    ...(fields.changelog && { changelog: fields.changelog }),
+    ...(fields.released && { released: fields.released }),
+  }
+}
+
 function parseItems(content: string, status: Status): TodoItem[] {
   // Split by ### headings to get individual items
   const itemBlocks = content.split(/(?=^###\s)/m).filter((block) => block.trim())
@@ -110,55 +166,8 @@ function parseItems(content: string, status: Status): TodoItem[] {
 
   for (const block of itemBlocks) {
     try {
-      const lines = block.split("\n")
-      const titleMatch = lines[0]?.match(/^###\s+(.+)/)
-      if (!titleMatch) continue
-
-      const title = titleMatch[1].trim()
-      if (!title) continue
-
-      const fields = parseFields(lines.slice(1))
-
-      const priority = VALID_PRIORITIES.includes(fields.priority as Priority)
-        ? (fields.priority as Priority)
-        : "Medium"
-
-      const category = fields.category
-        ? fields.category.split(",").map((c: string) => c.trim()).filter(Boolean)
-        : []
-
-      const files = fields.files
-        ? fields.files
-            .split(",")
-            .map((f: string) => f.trim().replace(/`/g, ""))
-            .filter(Boolean)
-        : undefined
-
-      const steps = fields.steps ? parseSteps(fields.steps) : undefined
-
-      const item: TodoItem = {
-        title,
-        priority,
-        category,
-        status,
-        ...(fields.branch && { branch: fields.branch }),
-        ...(fields.description && { description: fields.description }),
-        ...(files && files.length > 0 && { files }),
-        ...(fields.context && { context: fields.context }),
-        ...(fields.acceptance && { acceptance: fields.acceptance }),
-        ...(fields.code && { code: fields.code }),
-        ...(fields.dependencies && { dependencies: fields.dependencies }),
-        ...(steps && steps.length > 0 && { steps }),
-        ...(fields.added && { added: fields.added }),
-        ...(fields.started && { started: fields.started }),
-        ...(fields.completed && { completed: fields.completed }),
-        ...(fields.resolution && { resolution: fields.resolution }),
-        ...(fields.blocked && { blocked: fields.blocked }),
-        ...(fields.changelog && { changelog: fields.changelog }),
-        ...(fields.released && { released: fields.released }),
-      }
-
-      items.push(item)
+      const item = parseItemBlock(block, status)
+      if (item) items.push(item)
     } catch {
       // Skip malformed items — don't let one bad item kill the section
       continue
@@ -214,69 +223,14 @@ export function parseDoneMarkdown(content: string): TodoItem[] {
   if (!content || typeof content !== "string") {
     return []
   }
-
-  const itemBlocks = content.split(/(?=^###\s)/m).filter((block) => block.trim())
-  const items: TodoItem[] = []
-
-  for (const block of itemBlocks) {
-    try {
-      const lines = block.split("\n")
-      const titleMatch = lines[0]?.match(/^###\s+(.+)/)
-      if (!titleMatch) continue
-
-      const title = titleMatch[1].trim()
-      if (!title) continue
-
-      const fields = parseFields(lines.slice(1))
-
-      const priority = VALID_PRIORITIES.includes(fields.priority as Priority)
-        ? (fields.priority as Priority)
-        : "Medium"
-
-      const category = fields.category
-        ? fields.category.split(",").map((c: string) => c.trim()).filter(Boolean)
-        : []
-
-      const files = fields.files
-        ? fields.files
-            .split(",")
-            .map((f: string) => f.trim().replace(/`/g, ""))
-            .filter(Boolean)
-        : undefined
-
-      const steps = fields.steps ? parseSteps(fields.steps) : undefined
-
-      items.push({
-        title,
-        priority,
-        category,
-        status: "Resolved",
-        ...(fields.branch && { branch: fields.branch }),
-        ...(fields.description && { description: fields.description }),
-        ...(files && files.length > 0 && { files }),
-        ...(fields.context && { context: fields.context }),
-        ...(fields.acceptance && { acceptance: fields.acceptance }),
-        ...(steps && steps.length > 0 && { steps }),
-        ...(fields.added && { added: fields.added }),
-        ...(fields.started && { started: fields.started }),
-        ...(fields.completed && { completed: fields.completed }),
-        ...(fields.resolution && { resolution: fields.resolution }),
-        ...(fields.changelog && { changelog: fields.changelog }),
-        ...(fields.released && { released: fields.released }),
-      })
-    } catch {
-      // Skip malformed items
-      continue
-    }
-  }
-
-  return items
+  return parseItems(content, "Resolved")
 }
 
 const FIELD_ORDER = [
   "priority",
   "category",
   "branch",
+  "author",
   "files",
   "description",
   "context",
@@ -295,6 +249,7 @@ const FIELD_ORDER = [
 
 function serializeItem(item: TodoItem): string {
   const lines: string[] = [`### ${item.title}`]
+  if (item.id) lines.push(`<!-- id: ${item.id} -->`)
 
   for (const field of FIELD_ORDER) {
     switch (field) {
@@ -306,6 +261,9 @@ function serializeItem(item: TodoItem): string {
         break
       case "branch":
         if (item.branch) lines.push(`- **Branch**: ${item.branch}`)
+        break
+      case "author":
+        if (item.author) lines.push(`- **Author**: ${item.author}`)
         break
       case "files":
         if (item.files && item.files.length > 0)
@@ -403,6 +361,17 @@ export function serializeTodoMarkdown(
 
 export function serializeDoneItem(item: TodoItem): string {
   return serializeItem(item)
+}
+
+export const DONE_HEADER = "# Done\n\n> Completed TODO items archived from TODO.md.\n\n---\n"
+
+export function serializeDoneMarkdown(items: TodoItem[]): string {
+  const lines: string[] = [DONE_HEADER.trimEnd(), ""]
+  for (const item of items) {
+    lines.push(serializeItem(item))
+    lines.push("")
+  }
+  return lines.join("\n")
 }
 
 export function getTotalItemCount(sections: TodoSection[]): number {

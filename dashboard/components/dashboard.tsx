@@ -47,9 +47,8 @@ import { useProjectPolling } from "@/lib/use-project-polling"
 import { formatRelativeTime } from "@/lib/activity"
 import { ActivityItem, normalizeActivityColor, DOT_BG, type ActivityItemProps } from "./activity-item"
 import { TeamMenu } from "./team-menu"
-import { TeamFeed } from "./team-feed"
-import { useTeamSync } from "@/lib/use-team-sync"
-import type { ParsedProject, Priority, Status, SyncConfig, TodoItem } from "@/lib/types"
+import type { SyncStatus } from "@/lib/sync/server"
+import type { ParsedProject, Priority, Status, TodoItem } from "@/lib/types"
 
 const TAB_ORDER: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 
@@ -85,40 +84,11 @@ interface DashboardProps {
   defaultTab?: string | null
   defaultTheme?: string
   defaultBranch?: string | null
-  syncConfig?: SyncConfig | null
+  syncStatus?: SyncStatus | null
 }
 
-type FeedMode = "local" | "team"
-
-function FeedModeToggle({ mode, onChange, enabled }: { mode: FeedMode; onChange: (m: FeedMode) => void; enabled: boolean }) {
-  if (!enabled) {
-    return (
-      <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
-        activity feed
-      </div>
-    )
-  }
-  return (
-    <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.15em]" role="tablist" aria-label="Feed source">
-      {(["local", "team"] as FeedMode[]).map((m) => (
-        <button
-          key={m}
-          role="tab"
-          aria-selected={mode === m}
-          onClick={() => onChange(m)}
-          className={`transition-colors ${mode === m ? "text-primary" : "text-muted-foreground/50 hover:text-muted-foreground"}`}
-        >
-          {m === "local" ? "activity feed" : "team"}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch, syncConfig }: DashboardProps) {
+export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch, syncStatus }: DashboardProps) {
   const { projects, refresh } = useProjectPolling(initialProjects)
-  const sync = useTeamSync(syncConfig ?? null, projects)
-  const [feedMode, setFeedMode] = useState<FeedMode>("local")
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
     defaultProjectIndex !== undefined && defaultProjectIndex !== null && defaultProjectIndex < initialProjects.length
       ? defaultProjectIndex
@@ -417,7 +387,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     ?
                   </button>
                   <Separator orientation="vertical" className="hidden md:block !h-4 !self-auto" />
-                  <TeamMenu sync={sync} />
+                  <TeamMenu status={syncStatus ?? null} />
                   <ThemeToggle defaultTheme={defaultTheme} />
                 </div>
               </div>
@@ -519,11 +489,13 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                 <ScrollArea className="h-full">
                 <div className="p-6 flex flex-col min-h-[calc(100%-1px)]">
                   <div className="relative mb-4">
-                    <FeedModeToggle mode={feedMode} onChange={setFeedMode} enabled={sync.status !== "off"} />
+                    <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+                      activity feed
+                    </div>
                       <button
                         className="absolute right-0 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                         aria-label="Clear activity feed"
-                        disabled={activityEvents.length === 0 || feedMode === "team"}
+                        disabled={activityEvents.length === 0}
                         onClick={() => setClearDialogOpen(true)}
                       >
                         <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
@@ -531,17 +503,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                         </svg>
                       </button>
                   </div>
-                  {feedMode === "team" ? (
-                    <TeamFeed
-                      sync={sync}
-                      remote={selectedProject?.remote}
-                      branch={effectiveBranch}
-                      onSelectEvent={(props) => {
-                        setMobileActivityOpen(false)
-                        setSelectedEvent(props)
-                      }}
-                    />
-                  ) : activityEvents.length > 0 ? (
+                  {activityEvents.length > 0 ? (
                     <div className="space-y-0">
                       {activityEvents.map((event, i) => {
                         const props: ActivityItemProps = {
@@ -549,7 +511,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                           date: event.date,
                           action: event.action,
                           title: event.title,
-                          detail: event.detail,
+                          detail: event.actor ? `${event.actor} · ${event.detail}` : event.detail,
                           color: event.color,
                         }
                         return (
@@ -587,7 +549,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                 no project selected
               </span>
               <div className="ml-auto flex items-center gap-2 md:gap-3">
-                <TeamMenu sync={sync} />
+                <TeamMenu status={syncStatus ?? null} />
                 <ThemeToggle defaultTheme={defaultTheme} />
               </div>
             </header>
@@ -632,22 +594,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
           </SheetHeader>
           <ScrollArea className="h-full">
             <div className="p-4 flex flex-col min-h-[calc(100%-1px)]">
-              {sync.status !== "off" && (
-                <div className="mb-3">
-                  <FeedModeToggle mode={feedMode} onChange={setFeedMode} enabled />
-                </div>
-              )}
-              {feedMode === "team" ? (
-                    <TeamFeed
-                      sync={sync}
-                      remote={selectedProject?.remote}
-                      branch={effectiveBranch}
-                      onSelectEvent={(props) => {
-                        setMobileActivityOpen(false)
-                        setSelectedEvent(props)
-                      }}
-                    />
-                  ) : activityEvents.length > 0 ? (
+              {activityEvents.length > 0 ? (
                 <div className="space-y-0">
                   {activityEvents.map((event, i) => {
                     const props: ActivityItemProps = {
@@ -655,7 +602,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                       date: event.date,
                       action: event.action,
                       title: event.title,
-                      detail: event.detail,
+                      detail: event.actor ? `${event.actor} · ${event.detail}` : event.detail,
                       color: event.color,
                     }
                     return (

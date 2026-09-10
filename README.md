@@ -211,17 +211,21 @@ Projects are stored in `~/.atlas-todo/config.json`. You can add them via the "+"
 
 ## Team Sync
 
-By default everything is local. If you work with other people, the dashboard can mirror each machine's task state to a Supabase project so the whole team sees tasks moving in real time. Nothing flows back into your files: `TODO.md` in git stays the source of truth, and the cloud is a live window into what everyone else is doing.
+By default everything is local. If you work with other people, team sync moves the tasks into a shared Supabase database so everyone sees the same board, in real time, from either agent or the dashboard.
 
-What syncs, per project and branch:
-- **Activity events** from `.todo-activity.json`, attributed to the person and the agent (Claude Code, Codex, or the dashboard) that made them
-- **A snapshot of open work** — every Active, Blocked, Queued, and Pending item — from each teammate's machine
+The skill keeps working exactly as before. `TODO.md` and `DONE.md` stay on disk as caches of the database: a `todo sync` command regenerates them from the team's state and pushes any local edits back. The skill runs it before reading and after every write, and the dashboard runs it on its polling cycle. You keep editing markdown; nothing about the commands or their output changes.
 
-The dashboard's activity feed gains a **team** toggle showing teammates' open work and their activity for the selected project, updating live over Supabase Realtime.
+What the database adds:
+- Every task gets a stable id (written into the markdown as an invisible `<!-- id: ... -->` comment) and an `Author` field showing who created it
+- Edits from any teammate, in Claude Code, Codex, or the dashboard, appear on everyone's machine within seconds
+- The activity feed is team-wide and attributed by person and agent
+- Projects you haven't cloned still show in the dashboard, materialized from the database
+
+Task files leave git in synced projects: `todo sync` adds them to `.gitignore`, and you untrack them once. Teammates get tasks from the database, not from pulls, so there are no more merge conflicts in `TODO.md`.
 
 ### Setting it up
 
-One Supabase project equals one team. Everyone who signs in can see everything; writes are limited to your own rows.
+One Supabase project equals one team. Everyone who signs in can read and write every task.
 
 1. Create a free project at [supabase.com](https://supabase.com). On the create form, uncheck "Automatically expose new tables" and check "Enable automatic RLS".
 2. Push the schema from this repo. It creates the tables, security policies, and realtime subscriptions:
@@ -234,7 +238,7 @@ One Supabase project equals one team. Everyone who signs in can see everything; 
    ```
 
 3. Enable GitHub sign-in. Create a GitHub OAuth app (Settings → Developer settings → OAuth Apps) with callback URL `https://<your-project-ref>.supabase.co/auth/v1/callback`, then enable the GitHub provider in Supabase under Authentication → Sign In / Providers with the app's client ID and secret.
-4. Under Authentication → URL Configuration, set the Site URL to `http://localhost:3000` and add `http://localhost:300*/**` to Redirect URLs so any dashboard port works.
+4. Under Authentication → URL Configuration, set the Site URL to `http://localhost:3000` and add `http://localhost:300*/**` to Redirect URLs.
 5. Add the project URL and publishable key to `~/.atlas-todo/config.json`:
 
    ```json
@@ -247,9 +251,30 @@ One Supabase project equals one team. Everyone who signs in can see everything; 
    }
    ```
 
-Restart the dashboard and click **sign in** in the header. Each teammate repeats step 5 with the same values and signs in with their own GitHub account.
+6. Sign in from a terminal and import your projects:
 
-Projects are matched across machines by their git `origin` remote, so teammates need to have cloned the same repository. Projects without a remote stay local. Sync runs while the dashboard is open; a teammate's changes appear once their dashboard has pushed them.
+   ```bash
+   ~/.atlas-todo/bin/todo login
+   ~/.atlas-todo/bin/todo sync --all
+   ```
+
+   Add `~/.atlas-todo/bin` to your `PATH` if you want to type just `todo`. The first sync of a project imports whatever is in its files. Existing task files are matched by title so nothing duplicates.
+
+Each teammate repeats steps 5 and 6 with the same URL and key and their own GitHub account. Projects are matched across machines by their git `origin` remote.
+
+### The `todo` command
+
+```
+todo login          sign in with GitHub (once per machine)
+todo logout         forget the stored session
+todo whoami         show who is signed in
+todo sync [path]    push local edits, then regenerate TODO.md and DONE.md
+todo sync --all     sync every registered project
+todo sync --pull    regenerate only, discarding local edits
+todo sync --force   allow a push that deletes many tasks
+```
+
+`sync` refuses to delete a large share of a project's tasks, or any tasks when a task file is empty, unless you pass `--force`. That protects the team from a truncated file or an accidental template overwrite. Concurrent edits to the same task resolve last-push-wins; edits to different tasks never conflict.
 
 ## Customization
 

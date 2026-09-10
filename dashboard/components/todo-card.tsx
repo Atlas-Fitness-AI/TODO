@@ -453,8 +453,9 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         )}
 
         {/* Dates */}
-        {(item.added || item.started || item.completed) && (
-          <div className="flex gap-4 text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider pt-2 border-t border-border/30">
+        {(item.added || item.started || item.completed || item.author) && (
+          <div className="flex flex-wrap gap-4 text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider pt-2 border-t border-border/30">
+            {item.author && <span className="text-accent-special/80">by {item.author}</span>}
             {item.added && <span>added {item.added}</span>}
             {item.started && <span>started {item.started}</span>}
             {item.completed && <span>done {item.completed}</span>}

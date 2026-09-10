@@ -4,6 +4,8 @@ import { join, basename } from "path"
 import { homedir } from "os"
 import { loadAllProjects } from "@/lib/projects"
 import { readActivityLog } from "@/lib/activity-log"
+import { getProjectRemote } from "@/lib/git-remote"
+import { getServerAuth } from "@/lib/sync/server"
 
 const CONFIG_DIR = join(homedir(), ".atlas-todo")
 const CONFIG_PATH = join(CONFIG_DIR, "config.json")
@@ -47,7 +49,13 @@ async function validateProject(trimmedPath: string) {
       derivedName = match[1].trim()
     }
   } catch {
-    return { error: "No TODO.md found in this directory" }
+    // With team sync signed in, a checkout without TODO.md is fine: the
+    // first sync materializes the team's tasks into it.
+    const remote = await getProjectRemote(trimmedPath)
+    const auth = remote ? await getServerAuth() : null
+    if (!auth) {
+      return { error: "No TODO.md found in this directory" }
+    }
   }
 
   // Check for duplicates

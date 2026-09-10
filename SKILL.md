@@ -2,7 +2,7 @@
 name: todo
 description: Manage project TODO items with strict documentation standards. Use when working with TODO.md, when the user mentions tasks, bugs, features, work items, or task tracking, or when the user invokes the todo skill.
 argument-hint: "[add|done|move|start|next|stuck|status|scan|changelog|release|dashboard|init|update|help]"
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git rev-parse:*), Bash(git branch:*)
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git rev-parse:*), Bash(git branch:*), Bash(todo:*), Bash(~/.atlas-todo/bin/todo:*)
 ---
 
 # TODO Manager
@@ -20,9 +20,23 @@ You manage a structured TODO system shared by Claude Code, Codex, and the dashbo
 
 ## First: Load Context
 
-1. Read `TODORULES.md` in the project root. If it doesn't exist, suggest running `/todo init`.
-2. Read `TODO.md` in the project root. If it doesn't exist, suggest running `/todo init`.
-3. If archiving is enabled in TODORULES.md, check for the archive file (default: `DONE.md`).
+1. **Sync first.** If `~/.atlas-todo/bin/todo` exists, run `~/.atlas-todo/bin/todo sync` from the project root (see Team Sync below). Continue regardless of whether it reports "not configured".
+2. Read `TODORULES.md` in the project root. If it doesn't exist, suggest running `/todo init`.
+3. Read `TODO.md` in the project root. If it doesn't exist, suggest running `/todo init`.
+4. If archiving is enabled in TODORULES.md, check for the archive file (default: `DONE.md`).
+
+## Team Sync
+
+When the user has configured team sync, tasks live in a shared database and `TODO.md` / `DONE.md` are local caches of it. The `todo` command keeps them in step; you keep editing markdown exactly as described in this skill.
+
+- **Before reading** task files, run `~/.atlas-todo/bin/todo sync` so you start from the team's current state.
+- **After every write** to `TODO.md`, `DONE.md`, or `.todo-activity.json` (`add`, `done`, `move`, `start`, `next`, `stuck`, `release`, step toggles, `init`, `update`), run `~/.atlas-todo/bin/todo sync` again so your edit reaches the team. Do this once at the end of the command, after all file edits.
+- If sync prints "Team sync not configured", the project is local-only; skip it silently from then on in this session.
+- If sync fails with "Not signed in", tell the user to run `todo login` in a terminal, then continue with the local files.
+- If sync refuses because a push would delete many tasks, do not add `--force` yourself. Show the message to the user and let them decide.
+- **Preserve ids.** Synced items carry an `<!-- id: ... -->` comment on the line after their heading. Keep it exactly as is when editing or moving an item, including moves into the archive file. Never invent ids for new items; sync assigns them.
+- **Author is read-only.** `- **Author**: <name>` is set by sync from whoever created the task. Don't add, edit, or remove it.
+- Items can be edited by teammates between your commands. Re-read after syncing rather than relying on earlier output.
 
 ## Branch Scoping
 
@@ -61,6 +75,7 @@ Check for existing files before doing anything. If TODO.md already follows this 
 1. Read `templates/TODORULES.md` and write it to `./TODORULES.md`
 2. Read `templates/TODO.md` and write it to `./TODO.md`
 3. Ask the user for the project name and update the `> Project:` line.
+4. Run `~/.atlas-todo/bin/todo sync` if it exists. With team sync configured this registers the project and, if teammates already have tasks for it, fills `TODO.md` with them.
 
 **Always (including already-initialized projects):**
 - Read `templates/AGENT-TODO.md` and ensure its `## TODO System` section appears in **both** the project's `CLAUDE.md` and `AGENTS.md`, regardless of which agent runs init.
@@ -426,6 +441,7 @@ After every action that modifies TODO.md or DONE.md (`add`, `done`, `move`, `sta
 ## Formatting Rules
 
 When editing TODO.md:
+- Keep `<!-- id: ... -->` comments attached to their items (team sync).
 - Keep `---` separators between status sections.
 - Items within a section are ordered by priority (Critical > High > Medium > Low).
 - Remove empty status sections only if they've never had items. Keep section headers for sections that are just currently empty.

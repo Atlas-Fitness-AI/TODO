@@ -82,16 +82,66 @@ export async function loadProject(
   }
 }
 
+async function loadLocalProjects(configs: ProjectConfig[]): Promise<ParsedProject[]> {
+  const projects: ParsedProject[] = []
+  for (const projectConfig of configs) {
+    const project = await loadProject(projectConfig)
+    if (project) projects.push(project)
+  }
+  return projects
+}
+
+/**
+ * All projects to show. Local-only: the registered paths that have a
+ * TODO.md. Team sync: every team project (materialized to the registered
+ * checkout when there is one, else to a cache directory), synced first, plus
+ * registered paths that have no git remote.
+ */
 export async function loadAllProjects(): Promise<ParsedProject[]> {
   const config = await loadConfig()
-  const projects: ParsedProject[] = []
 
-  for (const projectConfig of config.projects) {
-    const project = await loadProject(projectConfig)
-    if (project) {
-      projects.push(project)
-    }
+  // Lazy import keeps the local-only path free of any sync dependencies.
+  const { getServerAuth, syncPath } = await import("./sync/server")
+  const auth = await getServerAuth()
+  if (!auth) return loadLocalProjects(config.projects)
+
+  const { listTeamProjects, cachePathForRemote } = await import("./sync")
+  let team: { id: number; remote_url: string; name: string }[]
+  try {
+    team = await listTeamProjects(auth.client)
+  } catch {
+    return loadLocalProjects(config.projects)
   }
 
-  return projects
+  const localByRemote = new Map<string, ProjectConfig>()
+  const unsynced: ProjectConfig[] = []
+  for (const pc of config.projects) {
+    const remote = await getProjectRemote(pc.path)
+    if (remote) localByRemote.set(remote, pc)
+    else unsynced.push(pc)
+  }
+  // Local checkouts the team hasn't registered yet get registered by syncing.
+  const remotes = new Set(team.map((t) => t.remote_url))
+  for (const [remote, pc] of localByRemote) {
+    if (!remotes.has(remote)) team.push({ id: -1, remote_url: remote, name: pc.name })
+  }
+
+  const synced = await Promise.all(
+    team.map(async (t): Promise<ParsedProject | null> => {
+      const local = localByRemote.get(t.remote_url)
+      const path = local?.path ?? cachePathForRemote(t.remote_url)
+      let syncError: string | undefined
+      try {
+        await syncPath(path, { remote: t.remote_url })
+      } catch (err) {
+        syncError = (err as Error).message
+      }
+      const project = await loadProject({ name: local?.name ?? t.name, path })
+      if (!project) return null
+      return { ...project, remote: t.remote_url, synced: true, ...(syncError && { syncError }) }
+    })
+  )
+
+  const local = await loadLocalProjects(unsynced)
+  return [...synced.filter((p): p is ParsedProject => p !== null), ...local]
 }

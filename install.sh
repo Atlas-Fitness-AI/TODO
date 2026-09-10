@@ -88,4 +88,27 @@ if [ -d "$DASHBOARD_DIR" ]; then
   mkdir -p "$CONFIG_DIR"
   echo "$DASHBOARD_DIR" > "$CONFIG_DIR/dashboard-path"
   echo "Dashboard path saved to $CONFIG_DIR/dashboard-path"
+
+  # The `todo` command (team sync) runs the dashboard's CLI with bun.
+  mkdir -p "$CONFIG_DIR/bin"
+  {
+    echo '#!/bin/bash'
+    echo '# Installed by TODO install.sh. Runs the team sync CLI from the dashboard checkout.'
+    echo "DASH=\"\$(cat \"$CONFIG_DIR/dashboard-path\" 2>/dev/null)\""
+    echo 'if [ -z "$DASH" ] || [ ! -f "$DASH/cli/todo.ts" ]; then'
+    echo '  echo "todo: dashboard not found; run ./install.sh from the TODO repo" >&2'
+    echo '  exit 1'
+    echo 'fi'
+    echo 'if ! command -v bun >/dev/null 2>&1; then'
+    echo '  echo "todo: bun is required (https://bun.sh)" >&2'
+    echo '  exit 1'
+    echo 'fi'
+    echo 'exec bun run "$DASH/cli/todo.ts" "$@"'
+  } > "$CONFIG_DIR/bin/todo"
+  chmod +x "$CONFIG_DIR/bin/todo"
+  echo "todo command installed to $CONFIG_DIR/bin/todo"
+
+  if [ -f "$DASHBOARD_DIR/package.json" ] && command -v bun >/dev/null 2>&1; then
+    (cd "$DASHBOARD_DIR" && bun install --silent) && echo "Dashboard dependencies installed"
+  fi
 fi
