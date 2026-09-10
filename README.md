@@ -11,12 +11,23 @@ Fathom is a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 $todo add Fix the login timeout        Codex
 ```
 
-- **Enforced standards.** Bugs need file references and a root cause. Features need acceptance criteria. Every task gets a priority, a category, and a description, or it doesn't get in.
-- **Memory across sessions.** Any agent, any day, can pick up exactly where the last one left off, with a full briefing.
-- **Steps, dependencies, branches.** Sub-task checklists the agent ticks off as it works, dependency checks before starting, and tasks scoped to release branches.
-- **Release notes for free.** Resolving user-visible work drafts a consumer-facing changelog line. Cutting a release writes `CHANGELOG.md`.
-- **A dashboard** with ten themes, keyboard navigation, a live activity feed, and pixel-art pets that work alongside your teammates.
-- **Team sync, optional.** One Supabase project turns the whole thing into a shared, real-time board for your team without changing how the skill works.
+## What it's actually like
+
+The surprising part isn't the file format. It's that the agents *want* to use it.
+
+Say "let's fix the flaky login test, add retries to the uploader, and get the release notes together." The agent doesn't just start typing. It opens three tasks, each with the files it plans to touch, the root cause it suspects, and the steps it intends to take. Then it works through them, ticking steps off as it finishes each one, and moves each task to Resolved with a note on what changed and a one-line changelog entry you could ship as is.
+
+Tomorrow, in a fresh session, `/todo next` hands you the most important thing left with a briefing: what it is, the files involved, what's already done, what to look at first. The agent that wrote the task isn't the agent reading it, and it doesn't matter. Nor does it matter whether yesterday was Claude Code and today is Codex.
+
+What that does to the way you work with an agent is the real feature. Talking to it turns into delegation. "Do this, this, and this" is enough, because the plan gets written down somewhere the agent is disciplined about, and progress gets checked back into the same place. You stop re-explaining context, and you stop losing half-finished work when a session dies.
+
+A few things that fall out of it:
+
+- **Bugs stop being one-liners.** The rules require file references and a root cause, so the agent goes and finds them before the task exists.
+- **Multi-step work survives interruptions.** Steps live in the task. A session can end at step two and the next one starts at step three.
+- **Release notes write themselves,** one sentence at a time, as work gets resolved. Cutting a release is one command.
+- **The dashboard shows it all live,** every project on one board, with a team feed and, if you're into that sort of thing, pixel pets that sit on the tasks people are working on.
+- **Teams get it for free.** One Supabase project turns the same tool into a shared, real-time board, without changing how the skill works.
 
 MIT licensed. No accounts, no servers, no database required until you want one.
 
@@ -40,7 +51,7 @@ That installs the skill for both agents and the `fathom` command. Then, in any p
 
 You get a `TODO.md`, a `TODORULES.md` with the rules and categories, and a TODO System section in `CLAUDE.md` and `AGENTS.md` so every future session knows the system exists. If you already have a `TODO.md`, `init` migrates it.
 
-From there, just talk about work. The agent will suggest tracking it.
+From there, just talk about work. The agent will start tracking it on its own.
 
 ---
 
