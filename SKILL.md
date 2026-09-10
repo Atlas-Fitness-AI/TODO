@@ -30,10 +30,10 @@ You manage a structured TODO system shared by Claude Code, Codex, and the dashbo
 When the user has configured team sync, tasks live in a shared database and `TODO.md` / `DONE.md` are local caches of it. The `todo` command keeps them in step; you keep editing markdown exactly as described in this skill.
 
 - **Before reading** task files, run `~/.atlas-todo/bin/todo sync` so you start from the team's current state.
-- **First sync asks.** If sync reports the project "hasn't been shared with the team yet", the user has to decide. Ask: "Share this project's tasks with your team, or keep them local?" Then write `sync: true` or `sync: false` into the config block at the bottom of `TODORULES.md` (add the line if missing) and run sync again. Never decide this yourself, and never pass `--force` or edit the setting without asking.
+- **First sync asks.** If sync reports the project "hasn't been shared with a team yet", the user has to decide. Run `~/.atlas-todo/bin/todo whoami` to see the configured teams. With one team ask "Share this project's tasks with your team, or keep them local?"; with several ask which team, or local. Then write `sync: <team name>` or `sync: false` into the config block at the bottom of `TODORULES.md` (add the line if missing) and run sync again. Never decide this yourself, and never pass `--force` or edit the setting without asking.
 - **After every write** to `TODO.md`, `DONE.md`, or `.todo-activity.json` (`add`, `done`, `move`, `start`, `next`, `stuck`, `release`, step toggles, `init`, `update`), run `~/.atlas-todo/bin/todo sync` again so your edit reaches the team. Do this once at the end of the command, after all file edits.
 - If sync prints "Team sync not configured" or "Team sync disabled for this project", the project is local-only; skip it silently from then on in this session.
-- A project opts out with `sync: false` in the config block of its `TODORULES.md`. Respect it: don't run sync there, and don't remove the setting during `update`.
+- A project opts out with `sync: false` in the config block of its `TODORULES.md`, or names its team with `sync: <team name>` (`sync: true` means the first configured team). Respect it: don't run sync there when it's false, and don't remove or change the setting during `update`.
 - If sync fails with "Not signed in", tell the user to run `todo login` in a terminal, then continue with the local files.
 - If sync refuses because a push would delete many tasks, do not add `--force` yourself. Show the message to the user and let them decide.
 - **Preserve ids.** Synced items carry an `<!-- id: ... -->` comment on the line after their heading. Keep it exactly as is when editing or moving an item, including moves into the archive file. Never invent ids for new items; sync assigns them.
@@ -78,7 +78,7 @@ Check for existing files before doing anything. If TODO.md already follows this 
 1. Read `templates/TODORULES.md` and write it to `./TODORULES.md`
 2. Read `templates/TODO.md` and write it to `./TODO.md`
 3. Ask the user for the project name and update the `> Project:` line.
-4. If `~/.atlas-todo/bin/todo` exists and `~/.atlas-todo/bin/todo whoami` reports a signed-in user, ask whether this project's tasks should be shared with the team or kept local, and write `sync: true` or `sync: false` into the config block of `TODORULES.md`. Then run `~/.atlas-todo/bin/todo sync`. Sharing registers the project and, if teammates already have tasks for it, fills `TODO.md` with them.
+4. If `~/.atlas-todo/bin/todo` exists and `~/.atlas-todo/bin/todo whoami` reports a signed-in user, ask whether this project's tasks should be shared (with which team, if several are listed) or kept local, and write `sync: <team name>` or `sync: false` into the config block of `TODORULES.md`. Then run `~/.atlas-todo/bin/todo sync`. Sharing registers the project and, if teammates already have tasks for it, fills `TODO.md` with them.
 
 **Always (including already-initialized projects):**
 - Read `templates/AGENT-TODO.md` and ensure its `## TODO System` section appears in **both** the project's `CLAUDE.md` and `AGENTS.md`, regardless of which agent runs init.

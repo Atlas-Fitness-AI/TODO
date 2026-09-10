@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import {
   SidebarProvider,
   SidebarInset,
@@ -91,6 +92,7 @@ interface DashboardProps {
 
 export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defaultProjectIndex, defaultTab, defaultTheme, defaultBranch, syncStatus, defaultCardsCollapsed = true, version }: DashboardProps) {
   const { projects, refresh } = useProjectPolling(initialProjects)
+  const router = useRouter()
   const [cardsCollapsed, setCardsCollapsed] = useState(defaultCardsCollapsed)
   function toggleCardsCollapsed() {
     setCardsCollapsed((v) => {
@@ -330,6 +332,13 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
         selectedBranch={effectiveBranch}
         onSelectBranch={handleSelectBranch}
         syncSignedIn={syncStatus?.signedIn ?? false}
+        teams={syncStatus?.teams ?? []}
+        team={syncStatus?.team ?? null}
+        onSelectTeam={(t) => {
+          document.cookie = `selected_team=${encodeURIComponent(t)}; path=/; max-age=${60 * 60 * 24 * 365}`
+          setSelectedIndex(null)
+          router.refresh()
+        }}
         version={version}
       />
       <SidebarInset>

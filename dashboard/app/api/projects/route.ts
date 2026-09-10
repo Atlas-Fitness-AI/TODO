@@ -5,7 +5,7 @@ import { homedir } from "os"
 import { loadAllProjects } from "@/lib/projects"
 import { readActivityLog } from "@/lib/activity-log"
 import { getProjectRemote } from "@/lib/git-remote"
-import { getServerAuth } from "@/lib/sync/server"
+import { getServerAuth, defaultTeam } from "@/lib/sync/server"
 
 const CONFIG_DIR = join(homedir(), ".atlas-todo")
 const CONFIG_PATH = join(CONFIG_DIR, "config.json")
@@ -52,7 +52,7 @@ async function validateProject(trimmedPath: string) {
     // With team sync signed in, a checkout without TODO.md is fine: the
     // first sync materializes the team's tasks into it.
     const remote = await getProjectRemote(trimmedPath)
-    const auth = remote ? await getServerAuth() : null
+    const auth = remote ? await getServerAuth(await defaultTeam()) : null
     if (!auth) {
       return { error: "No TODO.md found in this directory" }
     }
@@ -130,7 +130,8 @@ export async function POST(request: Request) {
     const { path: projectPath, name, share } = body as {
       path: string
       name?: string
-      share?: boolean
+      /** A team name to share with, or false to keep local. */
+      share?: string | false
     }
 
     if (!projectPath || typeof projectPath !== "string") {
@@ -159,9 +160,10 @@ export async function POST(request: Request) {
     result.config.projects.push(newProject)
 
     // Record the team-sync decision so the first poll doesn't have to guess.
-    if (typeof share === "boolean" && (await getServerAuth())) {
+    if (share === false || typeof share === "string") {
       const { setSyncSetting } = await import("@/lib/sync")
-      await setSyncSetting(trimmedPath, share)
+      const { loadTeams } = await import("@/lib/sync/teams")
+      if (share === false || (await loadTeams())[share]) await setSyncSetting(trimmedPath, share)
     }
 
     await mkdir(CONFIG_DIR, { recursive: true })

@@ -2,23 +2,35 @@
 /*
  * todo — team sync for the TODO skill.
  *
- *   todo login              sign in with GitHub (one time per machine)
- *   todo logout             forget the stored session
- *   todo whoami             show the signed-in user
- *   todo sync [path]        push local edits, then regenerate the task files
- *   todo sync --pull [path] regenerate only, ignoring local edits
+ *   todo login [team]        sign in with GitHub for a team (one time per machine)
+ *   todo logout [team]       forget that team's stored session
+ *   todo whoami              show who is signed in, per team
+ *   todo sync [path]         push local edits, then regenerate the task files
+ *   todo sync --pull [path]  regenerate only, ignoring local edits
  *   todo sync --force [path] allow a push that deletes many tasks
- *   todo sync --all         sync every registered project
+ *   todo sync --all          sync every registered project
  *
- * Exits 0 with a short message when sync is not configured, so the skill can
- * call it unconditionally.
+ * With one team configured, [team] is optional everywhere. Exits 0 with a
+ * short message when sync is not configured, so the skill can call it
+ * unconditionally.
  */
 
 import { resolve, basename } from "path"
 import { createInterface } from "readline"
-import { loadConfig, loadSyncConfig } from "../lib/projects"
-import { getAuthedClient, login, clearSession, readStoredSession } from "../lib/sync/session"
-import { syncProject, setSyncSetting, SyncError, SyncDisabledError, SyncUndecidedError, type SyncResult } from "../lib/sync"
+import { loadConfig } from "../lib/projects"
+import { getAuthedClient, login, clearSession, readStoredSession, type AuthedClient } from "../lib/sync/session"
+import {
+  syncProject,
+  getSyncSetting,
+  setSyncSetting,
+  hasSyncState,
+  SyncError,
+  SyncDisabledError,
+  SyncUndecidedError,
+  SyncUnknownTeamError,
+  type SyncResult,
+} from "../lib/sync"
+import { loadTeams, resolveTeamName, type Teams } from "../lib/sync/teams"
 
 const args = process.argv.slice(2)
 const command = args[0] ?? "help"
@@ -39,16 +51,6 @@ async function ask(question: string): Promise<string> {
   return new Promise((res) => rl.question(question, (answer) => { rl.close(); res(answer.trim()) }))
 }
 
-/** First sync of a project: decide whether it is shared. Returns false when the user keeps it local. */
-async function decideSharing(path: string): Promise<boolean> {
-  if (!process.stdin.isTTY) return false
-  const answer = await ask(`Share "${basename(path)}" with your team? Tasks will live in the shared database. [y/N] `)
-  const share = /^y(es)?$/i.test(answer)
-  await setSyncSetting(path, share)
-  out(share ? "Marked as shared (sync: true in TODORULES.md)." : "Kept local (sync: false in TODORULES.md).")
-  return share
-}
-
 function summarize(r: SyncResult): string {
   const parts: string[] = []
   if (r.inserted) parts.push(`${r.inserted} created`)
@@ -59,8 +61,61 @@ function summarize(r: SyncResult): string {
   return `${r.projectName}: ${pushed}; ${pulled}`
 }
 
+/** Pick a team from the argument, or the only one, or ask. */
+async function pickTeam(teams: Teams, given: string | undefined, purpose: string): Promise<string> {
+  const names = Object.keys(teams)
+  if (given) {
+    if (!teams[given]) fail(`Unknown team "${given}". Configured: ${names.join(", ")}`)
+    return given
+  }
+  if (names.length === 1) return names[0]
+  if (!process.stdin.isTTY) fail(`Several teams are configured (${names.join(", ")}); say which: todo ${purpose} <team>`)
+  const answer = await ask(`Which team? [${names.join("/")}] `)
+  if (!teams[answer]) fail(`Unknown team "${answer}".`)
+  return answer
+}
+
+/** Authenticated client for a team, with the pre-teams session honored for the first team. */
+async function authFor(teams: Teams, team: string): Promise<AuthedClient | null> {
+  return getAuthedClient(teams[team], team, Object.keys(teams)[0] === team)
+}
+
+/**
+ * First sync of a project: decide which team it is shared with, or keep it
+ * local. Returns the team name, or null when kept local.
+ */
+async function decideSharing(path: string, teams: Teams): Promise<string | null> {
+  if (!process.stdin.isTTY) return null
+  const names = Object.keys(teams)
+  const prompt =
+    names.length === 1
+      ? `Share "${basename(path)}" with team "${names[0]}"? Tasks will live in the shared database. [y/N] `
+      : `Share "${basename(path)}" with a team? Type one of [${names.join("/")}] or press enter to keep it local: `
+  const answer = await ask(prompt)
+  let team: string | null = null
+  if (names.length === 1) team = /^y(es)?$/i.test(answer) ? names[0] : null
+  else team = teams[answer] ? answer : null
+  await setSyncSetting(path, team ?? false)
+  out(team ? `Marked as shared with "${team}" (sync: ${team} in TODORULES.md).` : "Kept local (sync: false in TODORULES.md).")
+  return team
+}
+
+/** Which team a project syncs with, from TODORULES.md. */
+async function teamForProject(path: string, teams: Teams): Promise<{ team: string } | { undecided: true } | { disabled: true }> {
+  const setting = await getSyncSetting(path)
+  if (setting === false) return { disabled: true }
+  if (setting === undefined) {
+    if (await hasSyncState(path)) return { team: Object.keys(teams)[0] }
+    return { undecided: true }
+  }
+  const name = resolveTeamName(setting, teams)
+  if (!name) throw new SyncUnknownTeamError(String(setting))
+  return { team: name }
+}
+
 async function main() {
-  const config = await loadSyncConfig()
+  const teams = await loadTeams()
+  const configured = Object.keys(teams).length > 0
 
   switch (command) {
     case "help":
@@ -70,57 +125,57 @@ async function main() {
         [
           "usage: todo <command>",
           "",
-          "  login                 sign in with GitHub",
-          "  logout                forget the stored session",
-          "  whoami                show the signed-in user",
+          "  login [team]          sign in with GitHub",
+          "  logout [team]         forget the stored session",
+          "  whoami                show who is signed in",
           "  sync [path]           push local edits, then regenerate TODO.md / DONE.md",
           "    --pull              regenerate only, ignore local edits",
           "    --force             allow a push that deletes many tasks",
           "    --all               sync every project in ~/.atlas-todo/config.json",
           "",
-          "Sync is configured by a `sync` block in ~/.atlas-todo/config.json.",
+          "Teams are configured under `teams` in ~/.atlas-todo/config.json; each is one Supabase project.",
         ].join("\n")
       )
       return
 
     case "login": {
-      if (!config) fail("Team sync is not configured. Add a `sync` block to ~/.atlas-todo/config.json first.")
-      const session = await login(config, out)
-      out(`Signed in as ${session.user.name ?? session.user.email ?? session.user.id}`)
+      if (!configured) fail("Team sync is not configured. Add a `teams` block to ~/.atlas-todo/config.json first.")
+      const team = await pickTeam(teams, positional[0], "login")
+      const session = await login(teams[team], team, out)
+      out(`Signed in to "${team}" as ${session.user.name ?? session.user.email ?? session.user.id}`)
       return
     }
 
-    case "logout":
-      await clearSession()
-      out("Signed out.")
+    case "logout": {
+      if (!configured) fail("Team sync is not configured.")
+      const team = await pickTeam(teams, positional[0], "logout")
+      await clearSession(team)
+      out(`Signed out of "${team}".`)
       return
+    }
 
     case "whoami": {
-      if (!config) {
+      if (!configured) {
         out("Team sync not configured (local-only).")
         return
       }
-      const stored = await readStoredSession()
-      if (!stored) {
-        out("Not signed in. Run: todo login")
-        return
+      for (const team of Object.keys(teams)) {
+        const stored = await readStoredSession(team, Object.keys(teams)[0] === team)
+        if (!stored) {
+          out(`${team}: not signed in. Run: todo login ${team}`)
+          continue
+        }
+        const auth = await authFor(teams, team)
+        out(auth ? `${team}: ${auth.displayName} (${auth.user.email ?? auth.user.id})` : `${team}: session expired. Run: todo login ${team}`)
       }
-      const auth = await getAuthedClient(config)
-      if (!auth) {
-        out(`Session for ${stored.user.name ?? stored.user.id} has expired. Run: todo login`)
-        return
-      }
-      out(`Signed in as ${auth.displayName} (${auth.user.email ?? auth.user.id})`)
       return
     }
 
     case "sync": {
-      if (!config) {
+      if (!configured) {
         out("Team sync not configured; using local files.")
         return
       }
-      const auth = await getAuthedClient(config)
-      if (!auth) fail("Not signed in to team sync. Run: todo login", 2)
 
       const targets: string[] = []
       if (flags.has("--all")) {
@@ -134,23 +189,28 @@ async function main() {
       for (const path of targets) {
         const options = { force: flags.has("--force"), pullOnly: flags.has("--pull"), log: out }
         try {
-          let result: SyncResult
-          try {
-            result = await syncProject(auth, path, options)
-          } catch (err) {
-            if (!(err instanceof SyncUndecidedError)) throw err
-            if (!(await decideSharing(path))) {
-              out(`${path}: ${process.stdin.isTTY ? "kept local" : err.message}`)
-              continue
-            }
-            result = await syncProject(auth, path, options)
-          }
-          out(summarize(result))
-        } catch (err) {
-          if (err instanceof SyncDisabledError) {
-            out(`${path}: ${err.message}`)
+          let which = await teamForProject(path, teams)
+          if ("disabled" in which) {
+            out(`${path}: ${new SyncDisabledError().message}`)
             continue
           }
+          if ("undecided" in which) {
+            const chosen = await decideSharing(path, teams)
+            if (!chosen) {
+              out(`${path}: ${process.stdin.isTTY ? "kept local" : new SyncUndecidedError().message}`)
+              continue
+            }
+            which = { team: chosen }
+          }
+          const auth = await authFor(teams, which.team)
+          if (!auth) {
+            failed = true
+            process.stderr.write(`${path}: not signed in to team "${which.team}". Run: todo login ${which.team}\n`)
+            continue
+          }
+          const result = await syncProject(auth, path, { ...options, team: which.team })
+          out(summarize(result))
+        } catch (err) {
           failed = true
           process.stderr.write(`${path}: ${(err as Error).message}\n`)
         }

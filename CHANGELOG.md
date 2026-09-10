@@ -10,6 +10,7 @@
 - Two themes: Abyss (deep ocean) and Mono (zinc). Every theme now has its own status and accent colors.
 - Collapsible task cards, with a header toggle and the `c` key.
 - Projects are only shared when you say so; the first sync asks.
+- Several teams: each is its own Supabase project, a project names the team it belongs to, and the dashboard switches between them.
 
 ### Fixed
 - The installer test no longer depends on ripgrep.

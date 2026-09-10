@@ -179,14 +179,16 @@ One Supabase project equals one team. Everyone who signs in can read and write e
 3. Enable GitHub sign-in. Create a GitHub OAuth app (Settings → Developer settings → OAuth Apps) with callback URL `https://<your-project-ref>.supabase.co/auth/v1/callback`, then enable the GitHub provider in Supabase under Authentication → Sign In / Providers with the app's client ID and secret.
 4. Under Authentication → URL Configuration, set the Site URL to `http://localhost:3000` and add `http://localhost:300*/**` to Redirect URLs.
 5. **Lock down membership.** Under Authentication → Sign In / Providers, turn off "Allow new users to sign up." Otherwise anyone holding your URL and publishable key could join. Add teammates by inviting their email from the Users page before their first sign-in.
-6. Add the project URL and publishable key to `~/.atlas-todo/config.json`:
+6. Add the project URL and publishable key to `~/.atlas-todo/config.json` under a team name of your choosing:
 
    ```json
    {
      "projects": [...],
-     "sync": {
-       "url": "https://<your-project-ref>.supabase.co",
-       "publishableKey": "sb_publishable_..."
+     "teams": {
+       "atlas": {
+         "url": "https://<your-project-ref>.supabase.co",
+         "publishableKey": "sb_publishable_..."
+       }
      }
    }
    ```
@@ -200,24 +202,28 @@ One Supabase project equals one team. Everyone who signs in can read and write e
 
 Each teammate repeats steps 6 and 7 with the same URL and key and their own GitHub account. Projects match across machines by their git `origin` remote. Add `~/.atlas-todo/bin` to your `PATH` if you'd rather type `todo`.
 
+### Several teams
+
+Each team is its own Supabase project, so being on two teams is two entries under `teams`, each set up the same way. Sign in to each with `todo login <team>`. A project says which team it belongs to with `sync: <team>` in its `TODORULES.md`, and the sharing prompt asks which team when there's more than one. The dashboard shows one team at a time, with a switcher next to the Projects heading, and your local-only projects stay visible under every team. Pets and presence are per team, since profiles live in each team's database.
+
 ### Choosing what's shared
 
-Nothing is shared without a decision. The first time sync would run for a project you're asked whether to share it or keep it local: during `init`, on the first command in an older project, in the terminal, or with a checkbox in the dashboard's add-project dialog. The answer is stored in the project's `TODORULES.md`:
+Nothing is shared without a decision. The first time sync would run for a project you're asked whether to share it or keep it local: during `init`, on the first command in an older project, in the terminal, or with a checkbox in the dashboard's add-project dialog. The answer is stored in the project's `TODORULES.md`, as a team name or `false`:
 
 ```yaml
 archive: true
 archive_file: DONE.md
-sync: false
+sync: atlas
 ```
 
-A project with no answer stays local. Flip the value any time.
+A project with no answer stays local. Change the value any time.
 
 ### The `todo` command
 
 ```
-todo login          sign in with GitHub, once per machine
-todo logout         forget the stored session
-todo whoami         show who is signed in
+todo login [team]   sign in with GitHub, once per machine per team
+todo logout [team]  forget the stored session
+todo whoami         show who is signed in, per team
 todo sync [path]    push local edits, then regenerate the task files
 todo sync --all     sync every registered project
 todo sync --pull    regenerate only, discarding local edits

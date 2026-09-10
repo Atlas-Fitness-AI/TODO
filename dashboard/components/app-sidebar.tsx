@@ -36,6 +36,7 @@ import { toast } from "sonner"
 import type { ParsedProject } from "@/lib/types"
 import { getActiveItemCount } from "@/lib/parser"
 import { AddProjectDialog } from "@/components/add-project-dialog"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu"
 import { Pet, petName, type PetState } from "@/components/pets"
 import { formatRelativeTime } from "@/lib/activity"
 import type { Presence } from "@/lib/types"
@@ -61,6 +62,10 @@ interface AppSidebarProps {
   onSelectBranch: (branch: string | null) => void
   /** True when team sync is signed in; the add dialog then asks whether to share. */
   syncSignedIn?: boolean
+  /** Configured team names and the one currently shown. */
+  teams?: string[]
+  team?: string | null
+  onSelectTeam?: (team: string) => void
   version?: string
 }
 
@@ -101,6 +106,9 @@ export function AppSidebar({
   selectedBranch,
   onSelectBranch,
   syncSignedIn = false,
+  teams = [],
+  team = null,
+  onSelectTeam,
   version = "dev",
 }: AppSidebarProps) {
   // Team members who picked a pet, from whichever project carries presence.
@@ -205,10 +213,36 @@ export function AppSidebar({
         <SidebarContent>
           <SidebarGroup className="pt-4">
             <div className="flex items-center justify-between px-2 mb-2">
-              <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+              <div className="flex items-center text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
                 Projects
+                {teams.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <button
+                          className="ml-2 inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-[0.15em] text-primary border border-primary/40 hover:border-primary px-1.5 py-0.5 transition-colors"
+                          aria-label="Switch team"
+                        />
+                      }
+                    >
+                      {team ?? teams[0]}
+                      <svg width="7" height="7" viewBox="0 0 7 7" fill="none" aria-hidden="true">
+                        <path d="M1 2.5l2.5 2.5L6 2.5" stroke="currentColor" strokeWidth="1" />
+                      </svg>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" sideOffset={6} className="w-44">
+                      <DropdownMenuRadioGroup value={team ?? teams[0]} onValueChange={(v) => onSelectTeam?.(v)}>
+                        {teams.map((t) => (
+                          <DropdownMenuRadioItem key={t} value={t} className="text-[11px] font-mono uppercase tracking-wider">
+                            {t}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
-              <AddProjectDialog shareOption={syncSignedIn} />
+              <AddProjectDialog shareOption={syncSignedIn} teams={teams} defaultTeam={team} />
             </div>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">

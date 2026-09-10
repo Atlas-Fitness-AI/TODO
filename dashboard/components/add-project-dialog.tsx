@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export function AddProjectDialog({ shareOption = false }: { shareOption?: boolean } = {}) {
+export function AddProjectDialog({ shareOption = false, teams = [], defaultTeam = null }: { shareOption?: boolean; teams?: string[]; defaultTeam?: string | null } = {}) {
   const router = useRouter()
   const triggerId = useId()
   const [open, setOpen] = useState(false)
@@ -27,6 +27,7 @@ export function AddProjectDialog({ shareOption = false }: { shareOption?: boolea
   const [submitting, setSubmitting] = useState(false)
   const [validated, setValidated] = useState(false)
   const [share, setShare] = useState(true)
+  const [shareTeam, setShareTeam] = useState<string>(defaultTeam ?? teams[0] ?? "")
   const validateTimer = useRef<ReturnType<typeof setTimeout>>(null)
 
   function reset() {
@@ -101,7 +102,7 @@ export function AddProjectDialog({ shareOption = false }: { shareOption?: boolea
         body: JSON.stringify({
           path: trimmed,
           name: name.trim() || undefined,
-          ...(shareOption && { share }),
+          ...(shareOption && { share: share ? shareTeam || teams[0] : false }),
         }),
       })
 
@@ -221,6 +222,19 @@ export function AddProjectDialog({ shareOption = false }: { shareOption?: boolea
               />
               <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
                 Share with team{" "}
+                {teams.length > 1 && share && (
+                  <select
+                    value={shareTeam}
+                    onChange={(e) => setShareTeam(e.target.value)}
+                    onClick={(e) => e.preventDefault()}
+                    className="ml-1 bg-background border border-border text-[10px] font-mono uppercase tracking-wider px-1 py-0.5"
+                    aria-label="Team"
+                  >
+                    {teams.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                )}{" "}
                 <span className="block normal-case tracking-normal text-muted-foreground/50">
                   {share
                     ? "Tasks move to the shared database and every teammate sees them."

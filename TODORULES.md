@@ -116,6 +116,7 @@ Use one or more of these tags. Add project-specific categories below the default
 ```yaml
 archive: true
 archive_file: DONE.md
-# Team sync: `sync: true` shares this project with your team, `sync: false`
-# keeps it local. Leave unset and the first sync will ask.
+# Team sync: `sync: <team>` shares this project with that team (`sync: true`
+# means your first team), `sync: false` keeps it local. Leave unset and the
+# first sync will ask.
 ```

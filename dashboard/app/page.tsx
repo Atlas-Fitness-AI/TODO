@@ -21,8 +21,10 @@ export default async function Page() {
   const branchRaw = cookieStore.get("selected_branch")?.value
   const defaultBranch = branchRaw ? decodeURIComponent(branchRaw) : null
   const defaultCardsCollapsed = cookieStore.get("cards_collapsed")?.value !== "false"
-  const projects = await loadAllProjects()
-  const syncStatus = await getSyncStatus()
+  const teamRaw = cookieStore.get("selected_team")?.value
+  const selectedTeam = teamRaw ? decodeURIComponent(teamRaw) : null
+  const syncStatus = await getSyncStatus(selectedTeam)
+  const projects = await loadAllProjects(syncStatus.team)
   for (const project of projects) {
     project.activity = await readActivityLog(project.path)
   }

@@ -121,27 +121,32 @@ const YAML_BLOCK = /```ya?ml\n([\s\S]*?)```/
 
 /**
  * The project's team-sync decision from the config block of TODORULES.md:
- * true (share), false (keep local), or undefined (nobody has decided yet).
+ * a team name or true (share; true means the first configured team),
+ * false (keep local), or undefined (nobody has decided yet).
  */
-export async function getSyncSetting(projectPath: string): Promise<boolean | undefined> {
+export async function getSyncSetting(projectPath: string): Promise<string | boolean | undefined> {
   const rules = await readIfExists(join(projectPath, RULES_FILE))
   if (!rules) return undefined
   const block = rules.match(YAML_BLOCK)
   const body = block ? block[1] : rules
-  const match = body.match(/^\s*sync:\s*(true|false)\s*(#.*)?$/m)
-  return match ? match[1] === "true" : undefined
+  const match = body.match(/^\s*sync:\s*([A-Za-z0-9_-]+)\s*(#.*)?$/m)
+  if (!match) return undefined
+  const value = match[1]
+  if (value === "true") return true
+  if (value === "false") return false
+  return value
 }
 
-/** Record the decision in TODORULES.md, creating a config block if needed. */
-export async function setSyncSetting(projectPath: string, enabled: boolean): Promise<void> {
+/** Record the decision in TODORULES.md: a team name, true, or false. Creates a config block if needed. */
+export async function setSyncSetting(projectPath: string, enabled: string | boolean): Promise<void> {
   const path = join(projectPath, RULES_FILE)
   const line = `sync: ${enabled}`
   let rules = (await readIfExists(path)) ?? "# TODO Rules\n"
   const block = rules.match(YAML_BLOCK)
   if (block) {
     const body = block[1]
-    const next = /^\s*sync:\s*(true|false)\s*(#.*)?$/m.test(body)
-      ? body.replace(/^(\s*)sync:\s*(true|false)\s*(#.*)?$/m, `$1${line}`)
+    const next = /^\s*sync:\s*[A-Za-z0-9_-]+\s*(#.*)?$/m.test(body)
+      ? body.replace(/^(\s*)sync:\s*[A-Za-z0-9_-]+\s*(#.*)?$/m, `$1${line}`)
       : body.replace(/\n?$/, "") + `\n${line}\n`
     rules = rules.replace(block[0], FENCE + "yaml\n" + next + FENCE)
   } else {
@@ -166,7 +171,13 @@ export class SyncDisabledError extends SyncError {
 
 export class SyncUndecidedError extends SyncError {
   constructor() {
-    super("This project hasn't been shared with the team yet. Set `sync: true` or `sync: false` in TODORULES.md, or run `todo sync` in a terminal to choose.")
+    super("This project hasn't been shared with a team yet. Set `sync: <team>` or `sync: false` in TODORULES.md, or run `todo sync` in a terminal to choose.")
+  }
+}
+
+export class SyncUnknownTeamError extends SyncError {
+  constructor(team: string) {
+    super(`TODORULES.md names team "${team}", which is not in ~/.atlas-todo/config.json.`)
   }
 }
 
@@ -448,6 +459,8 @@ export interface SyncOptions {
   remote?: string
   /** Sync even when TODORULES.md has no explicit decision (team cache dirs). */
   assumeShared?: boolean
+  /** The team the client belongs to; refuses a project that names a different one. */
+  team?: string
   /** Allow a push that deletes many tasks at once. */
   force?: boolean
   /** Skip pushing even if the files changed (read-only refresh). */
@@ -463,6 +476,9 @@ export async function syncProject(auth: AuthedClient, projectPath: string, opts:
   if (setting === false) throw new SyncDisabledError()
   if (setting === undefined && !opts.assumeShared && !(await hasSyncState(projectPath))) {
     throw new SyncUndecidedError()
+  }
+  if (typeof setting === "string" && opts.team && setting !== opts.team) {
+    throw new SyncError(`This project is shared with team "${setting}", not "${opts.team}".`)
   }
 
   const remote = opts.remote ?? (await getProjectRemote(projectPath))

@@ -104,5 +104,8 @@ export interface SyncConfig {
 
 export interface AppConfig {
   projects: ProjectConfig[]
+  /** Named teams, each one Supabase project. */
+  teams?: Record<string, SyncConfig>
+  /** Legacy single-team form; read as a team named "default". */
   sync?: SyncConfig
 }

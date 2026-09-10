@@ -14,7 +14,13 @@ import type { SyncConfig } from "../types"
  */
 
 const CONFIG_DIR = join(homedir(), ".atlas-todo")
-const SESSION_PATH = join(CONFIG_DIR, "session.json")
+const SESSIONS_DIR = join(CONFIG_DIR, "sessions")
+/** Pre-teams session file; read as the session for the first team when its own file is missing. */
+const LEGACY_SESSION_PATH = join(CONFIG_DIR, "session.json")
+
+function sessionPath(team: string): string {
+  return join(SESSIONS_DIR, `${team}.json`)
+}
 
 export interface StoredSession {
   access_token: string
@@ -35,10 +41,12 @@ export function createServerClient(config: SyncConfig): SupabaseClient {
   })
 }
 
-export async function readStoredSession(): Promise<StoredSession | null> {
+export async function readStoredSession(team: string, legacyFallback = false): Promise<StoredSession | null> {
   try {
-    if (!existsSync(SESSION_PATH)) return null
-    const parsed = JSON.parse(await readFile(SESSION_PATH, "utf-8"))
+    let path = sessionPath(team)
+    if (!existsSync(path) && legacyFallback && existsSync(LEGACY_SESSION_PATH)) path = LEGACY_SESSION_PATH
+    if (!existsSync(path)) return null
+    const parsed = JSON.parse(await readFile(path, "utf-8"))
     if (!parsed?.access_token || !parsed?.refresh_token || !parsed?.user?.id) return null
     return parsed as StoredSession
   } catch {
@@ -57,22 +65,24 @@ function displayNameOf(user: User): string {
   )
 }
 
-async function saveSession(session: Session): Promise<void> {
-  await mkdir(CONFIG_DIR, { recursive: true })
+async function saveSession(team: string, session: Session): Promise<void> {
+  await mkdir(SESSIONS_DIR, { recursive: true })
   const stored: StoredSession = {
     access_token: session.access_token,
     refresh_token: session.refresh_token,
     expires_at: session.expires_at,
     user: { id: session.user.id, email: session.user.email, name: displayNameOf(session.user) },
   }
-  await writeFile(SESSION_PATH, JSON.stringify(stored, null, 2) + "\n", { mode: 0o600 })
+  await writeFile(sessionPath(team), JSON.stringify(stored, null, 2) + "\n", { mode: 0o600 })
 }
 
-export async function clearSession(): Promise<void> {
-  try {
-    await unlink(SESSION_PATH)
-  } catch {
-    // already gone
+export async function clearSession(team: string): Promise<void> {
+  for (const path of [sessionPath(team), LEGACY_SESSION_PATH]) {
+    try {
+      await unlink(path)
+    } catch {
+      // already gone
+    }
   }
 }
 
@@ -81,9 +91,9 @@ export async function clearSession(): Promise<void> {
  * the access token has expired. Null when sync is not configured or nobody
  * has run `todo login` on this machine.
  */
-export async function getAuthedClient(config: SyncConfig | null): Promise<AuthedClient | null> {
+export async function getAuthedClient(config: SyncConfig | null, team: string, legacyFallback = false): Promise<AuthedClient | null> {
   if (!config) return null
-  const stored = await readStoredSession()
+  const stored = await readStoredSession(team, legacyFallback)
   if (!stored) return null
 
   const client = createServerClient(config)
@@ -94,8 +104,8 @@ export async function getAuthedClient(config: SyncConfig | null): Promise<Authed
   if (error || !data.session || !data.user) {
     return null
   }
-  if (data.session.access_token !== stored.access_token) {
-    await saveSession(data.session)
+  if (data.session.access_token !== stored.access_token || !existsSync(sessionPath(team))) {
+    await saveSession(team, data.session)
   }
   return { client, user: data.user, displayName: displayNameOf(data.user) }
 }
@@ -115,7 +125,7 @@ function openBrowser(url: string): void {
  * opens the browser to Supabase's OAuth URL, and exchanges the returned code
  * for a session (PKCE, so the code is useless to anyone else).
  */
-export async function login(config: SyncConfig, log: (msg: string) => void = console.log): Promise<StoredSession> {
+export async function login(config: SyncConfig, team: string, log: (msg: string) => void = console.log): Promise<StoredSession> {
   const client = createServerClient(config)
 
   const port = await new Promise<number>((resolve, reject) => {
@@ -175,6 +185,6 @@ export async function login(config: SyncConfig, log: (msg: string) => void = con
     }, 5 * 60 * 1000).unref()
   })
 
-  await saveSession(session)
-  return (await readStoredSession())!
+  await saveSession(team, session)
+  return (await readStoredSession(team))!
 }

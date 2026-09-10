@@ -47,7 +47,7 @@ export function TeamMenu({ status }: { status: SyncStatus | null }) {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pet }),
+        body: JSON.stringify({ pet, team: status?.team ?? undefined }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -78,7 +78,7 @@ export function TeamMenu({ status }: { status: SyncStatus | null }) {
       <DropdownMenuContent align="end" sideOffset={8} className="w-72">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
-            team sync
+            team sync{status.team ? ` · ${status.team}` : ""}
           </DropdownMenuLabel>
           <div className="px-2 pb-2 space-y-2 text-[11px] font-mono">
             <div className="flex items-center gap-2">

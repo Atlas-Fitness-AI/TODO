@@ -31,15 +31,12 @@ export async function loadConfig(): Promise<AppConfig> {
   }
 }
 
-/** Team sync settings, or null when the dashboard runs local-only. */
+/** First team's sync settings, or null when the dashboard runs local-only. Prefer loadTeams(). */
 export async function loadSyncConfig(): Promise<SyncConfig | null> {
-  const config = await loadConfig()
-  const sync = config.sync
-  if (!sync || typeof sync.url !== "string" || typeof sync.publishableKey !== "string") {
-    return null
-  }
-  if (!sync.url.trim() || !sync.publishableKey.trim()) return null
-  return { url: sync.url.trim().replace(/\/+$/, ""), publishableKey: sync.publishableKey.trim() }
+  const { loadTeams } = await import("./sync/teams")
+  const teams = await loadTeams()
+  const first = Object.keys(teams)[0]
+  return first ? teams[first] : null
 }
 
 export async function loadProject(
@@ -95,45 +92,60 @@ async function loadLocalProjects(configs: ProjectConfig[]): Promise<ParsedProjec
 }
 
 /**
- * All projects to show. Local-only: the registered paths that have a
- * TODO.md. Team sync: every team project (materialized to the registered
- * checkout when there is one, else to a cache directory), synced first, plus
- * registered paths that have no git remote.
+ * All projects to show for one team. Local-only: the registered paths that
+ * have a TODO.md. Team sync: every project of the selected team (materialized
+ * to the registered checkout when there is one, else to a cache directory),
+ * synced first, plus registered paths that are local (no remote, opted out,
+ * undecided, or shared with a different team).
  */
-export async function loadAllProjects(): Promise<ParsedProject[]> {
+export async function loadAllProjects(team: string | null = null): Promise<ParsedProject[]> {
   const config = await loadConfig()
 
   // Lazy import keeps the local-only path free of any sync dependencies.
-  const { getServerAuth, syncPath } = await import("./sync/server")
-  const auth = await getServerAuth()
-  if (!auth) return loadLocalProjects(config.projects)
+  const { getServerAuth, syncPath, defaultTeam } = await import("./sync/server")
+  const selected = team ?? (await defaultTeam())
+  const auth = await getServerAuth(selected)
+  if (!auth || !selected) return loadLocalProjects(config.projects)
 
-  const { listTeamProjects, cachePathForRemote, isSyncDisabled } = await import("./sync")
-  let team: { id: number; remote_url: string; name: string }[]
+  const { listTeamProjects, cachePathForRemote, getSyncSetting, hasSyncState } = await import("./sync")
+  const { loadTeams, resolveTeamName } = await import("./sync/teams")
+  const teams = await loadTeams()
+  let teamRows: { id: number; remote_url: string; name: string }[]
   try {
-    team = await listTeamProjects(auth.client)
+    teamRows = await listTeamProjects(auth.client)
   } catch {
     return loadLocalProjects(config.projects)
   }
 
   const localByRemote = new Map<string, ProjectConfig>()
   const unsynced: ProjectConfig[] = []
-  const optedOut = new Set<string>()
+  const shadowed = new Set<string>()
   for (const pc of config.projects) {
     const remote = await getProjectRemote(pc.path)
-    if (!remote || (await isSyncDisabled(pc.path))) {
+    if (!remote) {
       unsynced.push(pc)
-      if (remote) optedOut.add(remote)
-    } else {
+      continue
+    }
+    const setting = await getSyncSetting(pc.path)
+    const target = setting === false || setting === undefined ? null : resolveTeamName(setting, teams)
+    const undecided = setting === undefined && !(await hasSyncState(pc.path))
+    if (target === selected && !undecided) {
       localByRemote.set(remote, pc)
+    } else if (setting === undefined && !undecided) {
+      // Synced before teams existed: belongs to the first team.
+      if (Object.keys(teams)[0] === selected) localByRemote.set(remote, pc)
+      else unsynced.push(pc)
+    } else {
+      unsynced.push(pc)
+      if (setting === false || undecided) shadowed.add(remote)
     }
   }
-  // A local checkout that opted out shadows the team's copy of that project.
-  team = team.filter((t) => !optedOut.has(t.remote_url))
+  // A local checkout that opted out (or hasn't decided) shadows the team's copy.
+  teamRows = teamRows.filter((t) => !shadowed.has(t.remote_url))
   // Local checkouts the team hasn't registered yet get registered by syncing.
-  const remotes = new Set(team.map((t) => t.remote_url))
+  const remotes = new Set(teamRows.map((t) => t.remote_url))
   for (const [remote, pc] of localByRemote) {
-    if (!remotes.has(remote)) team.push({ id: -1, remote_url: remote, name: pc.name })
+    if (!remotes.has(remote)) teamRows.push({ id: -1, remote_url: remote, name: pc.name })
   }
 
   // Presence: every member (with pet) and who is on which Active task.
@@ -160,35 +172,29 @@ export async function loadAllProjects(): Promise<ParsedProject[]> {
       }
     })
     presenceByProject = new Map()
-    for (const t of team) {
-      presenceByProject.set(t.id, { members, activeBy: {} })
-    }
+    for (const t of teamRows) presenceByProject.set(t.id, { members, activeBy: {} })
     for (const row of active ?? []) {
       const entry = presenceByProject.get(row.project_id as number)
       if (entry) entry.activeBy[row.id as string] = row.active_by as string
-    }
-    // Projects registered by this sync pass (id -1) still get the member list.
-    for (const t of team) {
-      if (!presenceByProject.has(t.id)) presenceByProject.set(t.id, { members, activeBy: {} })
     }
   } catch {
     // Presence is decoration; never block the board on it.
   }
 
   const synced = await Promise.all(
-    team.map(async (t): Promise<ParsedProject | null> => {
+    teamRows.map(async (t): Promise<ParsedProject | null> => {
       const local = localByRemote.get(t.remote_url)
-      const path = local?.path ?? cachePathForRemote(t.remote_url)
+      const path = local?.path ?? cachePathForRemote(`${selected}/${t.remote_url}`)
       let syncError: string | undefined
       try {
-        await syncPath(path, { remote: t.remote_url, assumeShared: !local })
+        await syncPath(selected, path, { remote: t.remote_url, assumeShared: !local, team: selected })
       } catch (err) {
         syncError = (err as Error).message
       }
       const project = await loadProject({ name: local?.name ?? t.name, path })
       if (!project) return null
       const presence = presenceByProject.get(t.id)
-      return { ...project, remote: t.remote_url, synced: true, ...(syncError && { syncError }), ...(presence && { team: presence }) }
+      return { ...project, remote: t.remote_url, synced: true, team: presence, ...(syncError && { syncError }) }
     })
   )
 
