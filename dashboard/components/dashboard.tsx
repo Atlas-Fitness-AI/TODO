@@ -196,11 +196,11 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
 
   const activityEvents = selectedProject?.activity ?? []
 
-  // Who is on an Active task, for the pet on its card.
+  // Who is on an Active task, or who finished a Resolved one, for the pet on its card.
   function workerFor(item: TodoItem): { name: string; pet: PetKey | null; presence: Presence; lastSeen: string | null } | null {
     const team = selectedProject?.team
     if (!team || !item.id) return null
-    const userId = team.activeBy[item.id]
+    const userId = item.status === "Resolved" ? team.completedBy[item.id] : team.activeBy[item.id]
     if (!userId) return null
     const member = team.members.find((m) => m.userId === userId)
     return member ? { name: member.name, pet: member.pet, presence: member.presence, lastSeen: member.lastSeen } : null

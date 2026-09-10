@@ -60,6 +60,8 @@ export interface TeamPresence {
   members: TeamMember[]
   /** Task id -> user id of whoever moved it into Active. */
   activeBy: Record<string, string>
+  /** Task id -> user id of whoever moved it into Resolved. */
+  completedBy: Record<string, string>
 }
 
 export interface ParsedProject {

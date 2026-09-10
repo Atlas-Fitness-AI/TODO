@@ -473,7 +473,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
         )}
 
         {/* Dates */}
-        {(item.added || item.started || item.completed || item.author || (worker?.pet && status === "Active")) && (
+        {(item.added || item.started || item.completed || item.author || (worker?.pet && (status === "Active" || status === "Resolved"))) && (
           <div className="flex flex-wrap items-center gap-4 text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider pt-2 border-t border-border/30">
             {item.author && <span className="text-accent-special/80">by {item.author}</span>}
             {item.added && <span>added {item.added}</span>}
@@ -482,7 +482,7 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
             {item.released && (
               <span className="text-status-resolved/80">▲ {item.released}</span>
             )}
-            {worker?.pet && status === "Active" && (
+            {worker?.pet && (status === "Active" || status === "Resolved") && (
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -495,20 +495,23 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
                   }
                 >
                   <span className="normal-case tracking-normal">
-                    {petName(worker.pet)} {worker.presence === "away" ? "is on it, but away" : "is on it"}
+                    {petName(worker.pet)}{" "}
+                    {status === "Resolved" ? "shipped it" : worker.presence === "away" ? "is on it, but away" : "is on it"}
                   </span>
-                  <Pet kind={worker.pet} state={worker.presence === "away" ? "away" : "work"} size={20} />
+                  <Pet kind={worker.pet} state={status === "Resolved" ? "idle" : worker.presence === "away" ? "away" : "work"} size={20} />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={6} className="w-60" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-3 px-2 py-2">
                     <div className="flex h-10 w-10 shrink-0 items-end justify-center">
-                      <Pet kind={worker.pet} state={worker.presence === "away" ? "away" : "work"} size={32} />
+                      <Pet kind={worker.pet} state={status === "Resolved" ? "idle" : worker.presence === "away" ? "away" : "work"} size={32} />
                     </div>
                     <div className="min-w-0 leading-tight font-mono">
                       <div className="text-[11px] font-medium uppercase tracking-wider truncate">
                         {petName(worker.pet)} the {worker.pet}
                       </div>
-                      <div className="text-[10px] text-muted-foreground truncate">belongs to {worker.name}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {status === "Resolved" ? `finished by ${worker.name}` : `belongs to ${worker.name}`}
+                      </div>
                       <div className={`text-[9px] uppercase tracking-[0.15em] mt-1 ${worker.presence === "away" ? "text-status-queued/80" : "text-primary"}`}>
                         {worker.presence}
                         {worker.lastSeen && ` · seen ${formatRelativeTime(worker.lastSeen)}`}

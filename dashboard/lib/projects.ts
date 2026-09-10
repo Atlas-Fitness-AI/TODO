@@ -151,9 +151,10 @@ export async function loadAllProjects(team: string | null = null): Promise<Parse
   // Presence: every member (with pet) and who is on which Active task.
   let presenceByProject = new Map<number, TeamPresence>()
   try {
-    const [{ data: profiles }, { data: active }] = await Promise.all([
+    const [{ data: profiles }, { data: active }, { data: completed }] = await Promise.all([
       auth.client.from("profiles").select("id, display_name, pet, last_seen"),
       auth.client.from("tasks").select("id, project_id, active_by").eq("status", "Active").eq("archived", false).not("active_by", "is", null),
+      auth.client.from("tasks").select("id, project_id, completed_by").eq("status", "Resolved").not("completed_by", "is", null),
     ])
     const workingIds = new Set((active ?? []).map((t) => t.active_by as string))
     const now = Date.now()
@@ -172,10 +173,14 @@ export async function loadAllProjects(team: string | null = null): Promise<Parse
       }
     })
     presenceByProject = new Map()
-    for (const t of teamRows) presenceByProject.set(t.id, { members, activeBy: {} })
+    for (const t of teamRows) presenceByProject.set(t.id, { members, activeBy: {}, completedBy: {} })
     for (const row of active ?? []) {
       const entry = presenceByProject.get(row.project_id as number)
       if (entry) entry.activeBy[row.id as string] = row.active_by as string
+    }
+    for (const row of completed ?? []) {
+      const entry = presenceByProject.get(row.project_id as number)
+      if (entry) entry.completedBy[row.id as string] = row.completed_by as string
     }
   } catch {
     // Presence is decoration; never block the board on it.

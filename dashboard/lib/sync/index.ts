@@ -64,6 +64,8 @@ export interface TaskRow {
   updated_by: string
   /** Who moved the task into Active; null once it leaves. */
   active_by: string | null
+  /** Who moved the task into Resolved; kept so the finisher stays credited. */
+  completed_by: string | null
   updated_at: string
   author?: { display_name: string | null } | null
 }
@@ -246,6 +248,12 @@ export function itemToRow(
           ? existing.active_by
           : userId
         : null,
+    completed_by:
+      archived || item.status === "Resolved"
+        ? existing?.status === "Resolved" || existing?.archived
+          ? existing.completed_by ?? userId
+          : userId
+        : null,
   }
 }
 
@@ -280,7 +288,7 @@ export function rowToItem(row: TaskRow): TodoItem {
 const COMPARED_FIELDS = [
   "branch", "status", "priority", "title", "category", "description", "files", "context",
   "acceptance", "code", "dependencies", "steps", "added", "started", "completed", "resolution",
-  "blocked", "changelog", "released", "archived", "position", "active_by",
+  "blocked", "changelog", "released", "archived", "position", "active_by", "completed_by",
 ] as const
 
 function rowsDiffer(a: Omit<TaskRow, "updated_at" | "author">, b: TaskRow): boolean {
@@ -293,7 +301,7 @@ function rowsDiffer(a: Omit<TaskRow, "updated_at" | "author">, b: TaskRow): bool
 /* ------------------------------------------------------------- rendering */
 
 const TASK_SELECT =
-  "id, project_id, branch, status, priority, title, category, description, files, context, acceptance, code, dependencies, steps, added, started, completed, resolution, blocked, changelog, released, archived, position, created_by, updated_by, active_by, updated_at, author:profiles!tasks_created_by_fkey(display_name)"
+  "id, project_id, branch, status, priority, title, category, description, files, context, acceptance, code, dependencies, steps, added, started, completed, resolution, blocked, changelog, released, archived, position, created_by, updated_by, active_by, completed_by, updated_at, author:profiles!tasks_created_by_fkey(display_name)"
 
 async function fetchTasks(client: SupabaseClient, projectId: number): Promise<TaskRow[]> {
   const { data, error } = await client.from("tasks").select(TASK_SELECT).eq("project_id", projectId)
