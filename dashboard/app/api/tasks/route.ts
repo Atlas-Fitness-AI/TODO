@@ -8,7 +8,7 @@ import { upsertFieldInDoneMarkdown } from "@/lib/changelog"
 import { readActivityLog } from "@/lib/activity-log"
 import type { Priority, Status, Step, TodoItem, AppConfig, ActivityEvent } from "@/lib/types"
 
-const CONFIG_PATH = join(homedir(), ".atlas-todo", "config.json")
+const CONFIG_PATH = join(homedir(), ".fathom", "config.json")
 
 const VALID_STATUSES: Status[] = ["Active", "Blocked", "Queued", "Pending", "Resolved"]
 const VALID_PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"]

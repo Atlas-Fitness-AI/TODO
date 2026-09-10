@@ -2,7 +2,7 @@
 name: todo
 description: Manage project TODO items with strict documentation standards. Use when working with TODO.md, when the user mentions tasks, bugs, features, work items, or task tracking, or when the user invokes the todo skill.
 argument-hint: "[add|done|move|start|next|stuck|status|scan|changelog|release|dashboard|init|update|help]"
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git rev-parse:*), Bash(git branch:*), Bash(todo:*), Bash(~/.atlas-todo/bin/todo:*)
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git rev-parse:*), Bash(git branch:*), Bash(todo:*), Bash(~/.fathom/bin/fathom:*)
 ---
 
 # TODO Manager
@@ -20,21 +20,21 @@ You manage a structured TODO system shared by Claude Code, Codex, and the dashbo
 
 ## First: Load Context
 
-1. **Sync first.** If `~/.atlas-todo/bin/todo` exists, run `~/.atlas-todo/bin/todo sync` from the project root (see Team Sync below). Continue regardless of whether it reports "not configured".
+1. **Sync first.** If `~/.fathom/bin/fathom` exists, run `~/.fathom/bin/fathom sync` from the project root (see Team Sync below). Continue regardless of whether it reports "not configured".
 2. Read `TODORULES.md` in the project root. If it doesn't exist, suggest running `/todo init`.
 3. Read `TODO.md` in the project root. If it doesn't exist, suggest running `/todo init`.
 4. If archiving is enabled in TODORULES.md, check for the archive file (default: `DONE.md`).
 
 ## Team Sync
 
-When the user has configured team sync, tasks live in a shared database and `TODO.md` / `DONE.md` are local caches of it. The `todo` command keeps them in step; you keep editing markdown exactly as described in this skill.
+When the user has configured team sync, tasks live in a shared database and `TODO.md` / `DONE.md` are local caches of it. The `fathom` command keeps them in step; you keep editing markdown exactly as described in this skill.
 
-- **Before reading** task files, run `~/.atlas-todo/bin/todo sync` so you start from the team's current state.
-- **First sync asks.** If sync reports the project "hasn't been shared with a team yet", the user has to decide. Run `~/.atlas-todo/bin/todo whoami` to see the configured teams. With one team ask "Share this project's tasks with your team, or keep them local?"; with several ask which team, or local. Then write `sync: <team name>` or `sync: false` into the config block at the bottom of `TODORULES.md` (add the line if missing) and run sync again. Never decide this yourself, and never pass `--force` or edit the setting without asking.
-- **After every write** to `TODO.md`, `DONE.md`, or `.todo-activity.json` (`add`, `done`, `move`, `start`, `next`, `stuck`, `release`, step toggles, `init`, `update`), run `~/.atlas-todo/bin/todo sync` again so your edit reaches the team. Do this once at the end of the command, after all file edits.
+- **Before reading** task files, run `~/.fathom/bin/fathom sync` so you start from the team's current state.
+- **First sync asks.** If sync reports the project "hasn't been shared with a team yet", the user has to decide. Run `~/.fathom/bin/fathom whoami` to see the configured teams. With one team ask "Share this project's tasks with your team, or keep them local?"; with several ask which team, or local. Then write `sync: <team name>` or `sync: false` into the config block at the bottom of `TODORULES.md` (add the line if missing) and run sync again. Never decide this yourself, and never pass `--force` or edit the setting without asking.
+- **After every write** to `TODO.md`, `DONE.md`, or `.todo-activity.json` (`add`, `done`, `move`, `start`, `next`, `stuck`, `release`, step toggles, `init`, `update`), run `~/.fathom/bin/fathom sync` again so your edit reaches the team. Do this once at the end of the command, after all file edits.
 - If sync prints "Team sync not configured" or "Team sync disabled for this project", the project is local-only; skip it silently from then on in this session.
 - A project opts out with `sync: false` in the config block of its `TODORULES.md`, or names its team with `sync: <team name>` (`sync: true` means the first configured team). Respect it: don't run sync there when it's false, and don't remove or change the setting during `update`.
-- If sync fails with "Not signed in", tell the user to run `todo login` in a terminal, then continue with the local files.
+- If sync fails with "Not signed in", tell the user to run `fathom login` in a terminal, then continue with the local files.
 - If sync refuses because a push would delete many tasks, do not add `--force` yourself. Show the message to the user and let them decide.
 - **Preserve ids.** Synced items carry an `<!-- id: ... -->` comment on the line after their heading. Keep it exactly as is when editing or moving an item, including moves into the archive file. Never invent ids for new items; sync assigns them.
 - **Author is read-only.** `- **Author**: <name>` is set by sync from whoever created the task. Don't add, edit, or remove it.
@@ -72,13 +72,13 @@ Check for existing files before doing anything. If TODO.md already follows this 
 5. Write the new structured TODO.md with all migrated items in their proper status sections.
 6. Show the user a summary of what was migrated: count by status, any items that need manual review (ambiguous priority/category).
 7. Ask the user to review and adjust anything that was inferred incorrectly.
-8. Same as the fresh-start flow: if team sync is signed in, ask whether to share this project or keep it local, record the answer in `TODORULES.md`, then run `~/.atlas-todo/bin/todo sync`.
+8. Same as the fresh-start flow: if team sync is signed in, ask whether to share this project or keep it local, record the answer in `TODORULES.md`, then run `~/.fathom/bin/fathom sync`.
 
 **If `TODO.md` does not exist (fresh start):**
 1. Read `templates/TODORULES.md` and write it to `./TODORULES.md`
 2. Read `templates/TODO.md` and write it to `./TODO.md`
 3. Ask the user for the project name and update the `> Project:` line.
-4. If `~/.atlas-todo/bin/todo` exists and `~/.atlas-todo/bin/todo whoami` reports a signed-in user, ask whether this project's tasks should be shared (with which team, if several are listed) or kept local, and write `sync: <team name>` or `sync: false` into the config block of `TODORULES.md`. Then run `~/.atlas-todo/bin/todo sync`. Sharing registers the project and, if teammates already have tasks for it, fills `TODO.md` with them.
+4. If `~/.fathom/bin/fathom` exists and `~/.fathom/bin/fathom whoami` reports a signed-in user, ask whether this project's tasks should be shared (with which team, if several are listed) or kept local, and write `sync: <team name>` or `sync: false` into the config block of `TODORULES.md`. Then run `~/.fathom/bin/fathom sync`. Sharing registers the project and, if teammates already have tasks for it, fills `TODO.md` with them.
 
 **Always (including already-initialized projects):**
 - Read `templates/AGENT-TODO.md` and ensure its `## TODO System` section appears in **both** the project's `CLAUDE.md` and `AGENTS.md`, regardless of which agent runs init.
@@ -349,7 +349,7 @@ Write pending changelog entries to `CHANGELOG.md` and stamp the items.
 
 Open the TODO dashboard in the browser, starting the dev server if needed.
 
-1. Read `~/.atlas-todo/dashboard-path` to find the dashboard directory.
+1. Read `~/.fathom/dashboard-path` to find the dashboard directory.
    - If the file doesn't exist, check for `dashboard/` beside this loaded `SKILL.md` as a fallback.
    - If neither exists, tell the user: "Dashboard path not configured. Run `./install.sh` from the TODO repo to set it up."
 2. Check ports 3000-3009 for an existing TODO dashboard:

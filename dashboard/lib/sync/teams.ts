@@ -12,7 +12,7 @@ import type { SyncConfig } from "../types"
  * A legacy top-level `sync` block is read as a team named "default".
  */
 
-const CONFIG_DIR = join(homedir(), ".atlas-todo")
+const CONFIG_DIR = join(homedir(), ".fathom")
 const CONFIG_PATH = join(CONFIG_DIR, "config.json")
 
 export const LEGACY_TEAM = "default"

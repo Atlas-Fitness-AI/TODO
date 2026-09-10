@@ -204,7 +204,7 @@ export function AppSidebar({
           <div className="flex items-center gap-2.5">
             <Mascot size={20} />
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary glow-rose">
-              TODO
+              Fathom
             </div>
           </div>
           <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
@@ -351,7 +351,7 @@ export function AppSidebar({
                     <span className="text-primary">&gt;</span> no projects loaded
                     <br />
                     <span className="text-muted-foreground/50 mt-1 block">
-                      cfg: ~/.atlas-todo/config.json
+                      cfg: ~/.fathom/config.json
                     </span>
                   </div>
                 )}

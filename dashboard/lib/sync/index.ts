@@ -173,13 +173,13 @@ export class SyncDisabledError extends SyncError {
 
 export class SyncUndecidedError extends SyncError {
   constructor() {
-    super("This project hasn't been shared with a team yet. Set `sync: <team>` or `sync: false` in TODORULES.md, or run `todo sync` in a terminal to choose.")
+    super("This project hasn't been shared with a team yet. Set `sync: <team>` or `sync: false` in TODORULES.md, or run `fathom sync` in a terminal to choose.")
   }
 }
 
 export class SyncUnknownTeamError extends SyncError {
   constructor(team: string) {
-    super(`TODORULES.md names team "${team}", which is not in ~/.atlas-todo/config.json.`)
+    super(`TODORULES.md names team "${team}", which is not in ~/.fathom/config.json.`)
   }
 }
 
@@ -197,7 +197,7 @@ export function newTaskId(): string {
 
 /** Where a team project without a local checkout gets materialized. */
 export function cachePathForRemote(remote: string): string {
-  return join(homedir(), ".atlas-todo", "cache", remote.replace(/[^a-z0-9._-]+/gi, "_"))
+  return join(homedir(), ".fathom", "cache", remote.replace(/[^a-z0-9._-]+/gi, "_"))
 }
 
 /* --------------------------------------------------------- row <-> item */

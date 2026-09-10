@@ -1,10 +1,10 @@
 <p align="center"><img src="assets/logo.svg" width="112" height="112" alt="Fathom the anglerfish, the TODO mascot"></p>
 
-<h1 align="center">TODO</h1>
+<h1 align="center">Fathom</h1>
 
 <p align="center"><strong>A task tracker your coding agents actually use.</strong></p>
 
-TODO is a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://developers.openai.com/codex/skills/) that turns either agent into a disciplined project manager, plus a local dashboard that shows every project on one board. Tasks live in plain markdown in your repo, or, for teams, in a shared database that keeps everyone's board in sync in real time.
+Fathom is a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://developers.openai.com/codex/skills/) that turns either agent into a disciplined project manager, plus a local dashboard that shows every project on one board. Tasks live in plain markdown in your repo, or, for teams, in a shared database that keeps everyone's board in sync in real time.
 
 ```
 /todo add Fix the login timeout        Claude Code
@@ -27,12 +27,12 @@ MIT licensed. No accounts, no servers, no database required until you want one.
 ## Quick Start
 
 ```bash
-git clone https://github.com/Atlas-Fitness-AI/TODO.git
-cd TODO
+git clone https://github.com/Atlas-Fitness-AI/fathom.git
+cd fathom
 ./install.sh
 ```
 
-That installs the skill for both agents and the `todo` command. Then, in any project:
+That installs the skill for both agents and the `fathom` command. Then, in any project:
 
 ```
 /todo init
@@ -169,7 +169,7 @@ That starts the dev server if needed, finds a free port, and opens your browser.
 
 <p align="center"><img src="assets/screenshots/pets.png" alt="The team menu open, showing the twelve pets to choose from, with the activity feed using pets as timeline markers" width="100%"></p>
 
-Projects are stored in `~/.atlas-todo/config.json`. Add them from the sidebar or edit the file.
+Projects are stored in `~/.fathom/config.json`. Add them from the sidebar or edit the file.
 
 ---
 
@@ -177,9 +177,9 @@ Projects are stored in `~/.atlas-todo/config.json`. Add them from the sidebar or
 
 By default everything is local. Add a Supabase project and the same tool becomes a shared, real-time board: every teammate sees the same tasks from Claude Code, Codex, or the dashboard, and edits appear everywhere within seconds.
 
-**The skill doesn't change.** Task files stay on disk as caches of the database, and a `todo sync` command keeps them in step. The skill runs it before reading and after every write; the dashboard runs it on its polling cycle. You keep editing markdown. Tasks gain a stable id (an invisible comment in the file) and an `Author`, and the activity feed becomes team-wide. Projects you haven't cloned still show up, materialized from the database.
+**The skill doesn't change.** Task files stay on disk as caches of the database, and a `fathom sync` command keeps them in step. The skill runs it before reading and after every write; the dashboard runs it on its polling cycle. You keep editing markdown. Tasks gain a stable id (an invisible comment in the file) and an `Author`, and the activity feed becomes team-wide. Projects you haven't cloned still show up, materialized from the database.
 
-Task files leave git in shared projects. `todo sync` adds them to `.gitignore`, you untrack them once, and there are no more merge conflicts in `TODO.md`.
+Task files leave git in shared projects. `fathom sync` adds them to `.gitignore`, you untrack them once, and there are no more merge conflicts in `TODO.md`.
 
 ### Setup
 
@@ -198,7 +198,7 @@ One Supabase project equals one team. Everyone who signs in can read and write e
 3. Enable GitHub sign-in. Create a GitHub OAuth app (Settings → Developer settings → OAuth Apps) with callback URL `https://<your-project-ref>.supabase.co/auth/v1/callback`, then enable the GitHub provider in Supabase under Authentication → Sign In / Providers with the app's client ID and secret.
 4. Under Authentication → URL Configuration, set the Site URL to `http://localhost:3000` and add `http://localhost:300*/**` to Redirect URLs.
 5. **Lock down membership.** Under Authentication → Sign In / Providers, turn off "Allow new users to sign up." Otherwise anyone holding your URL and publishable key could join. Add teammates by inviting their email from the Users page before their first sign-in.
-6. Add the project URL and publishable key to `~/.atlas-todo/config.json` under a team name of your choosing:
+6. Add the project URL and publishable key to `~/.fathom/config.json` under a team name of your choosing:
 
    ```json
    {
@@ -215,15 +215,15 @@ One Supabase project equals one team. Everyone who signs in can read and write e
 7. Sign in and import your projects:
 
    ```bash
-   ~/.atlas-todo/bin/todo login
-   ~/.atlas-todo/bin/todo sync --all
+   ~/.fathom/bin/fathom login
+   ~/.fathom/bin/fathom sync --all
    ```
 
-Each teammate repeats steps 6 and 7 with the same URL and key and their own GitHub account. Projects match across machines by their git `origin` remote. Add `~/.atlas-todo/bin` to your `PATH` if you'd rather type `todo`.
+Each teammate repeats steps 6 and 7 with the same URL and key and their own GitHub account. Projects match across machines by their git `origin` remote. Add `~/.fathom/bin` to your `PATH` if you'd rather type `fathom`.
 
 ### Several teams
 
-Each team is its own Supabase project, so being on two teams is two entries under `teams`, each set up the same way. Sign in to each with `todo login <team>`. A project says which team it belongs to with `sync: <team>` in its `TODORULES.md`, and the sharing prompt asks which team when there's more than one. The dashboard shows one team at a time, with a switcher next to the Projects heading, and your local-only projects stay visible under every team. Pets and presence are per team, since profiles live in each team's database.
+Each team is its own Supabase project, so being on two teams is two entries under `teams`, each set up the same way. Sign in to each with `fathom login <team>`. A project says which team it belongs to with `sync: <team>` in its `TODORULES.md`, and the sharing prompt asks which team when there's more than one. The dashboard shows one team at a time, with a switcher next to the Projects heading, and your local-only projects stay visible under every team. Pets and presence are per team, since profiles live in each team's database.
 
 ### Choosing what's shared
 
@@ -237,16 +237,16 @@ sync: atlas
 
 A project with no answer stays local. Change the value any time.
 
-### The `todo` command
+### The `fathom` command
 
 ```
-todo login [team]   sign in with GitHub, once per machine per team
-todo logout [team]  forget the stored session
-todo whoami         show who is signed in, per team
-todo sync [path]    push local edits, then regenerate the task files
-todo sync --all     sync every registered project
-todo sync --pull    regenerate only, discarding local edits
-todo sync --force   allow a push that deletes many tasks
+fathom login [team]   sign in with GitHub, once per machine per team
+fathom logout [team]  forget the stored session
+fathom whoami         show who is signed in, per team
+fathom sync [path]    push local edits, then regenerate the task files
+fathom sync --all     sync every registered project
+fathom sync --pull    regenerate only, discarding local edits
+fathom sync --force   allow a push that deletes many tasks
 ```
 
 Sync is careful by design. A fresh clone never deletes anything. An empty task file, or a push that would remove a large share of a project's tasks, needs `--force`. A file with no sync ids while the team already has tasks is treated as a stale copy from an old branch and regenerated rather than pushed. Concurrent edits to the same task resolve last-push-wins; edits to different tasks never conflict.
@@ -256,7 +256,7 @@ Sync is careful by design. A fresh clone never deletes anything. An empty task f
 ## Updating
 
 ```bash
-cd TODO && git pull && ./install.sh
+cd fathom && git pull && ./install.sh
 ```
 
 Then, in each project, `/todo update` refreshes `TODORULES.md` from the latest template while preserving your categories and settings, audits existing tasks for compatibility, and updates the guidance in `CLAUDE.md` and `AGENTS.md`.
@@ -283,4 +283,4 @@ The skill is `SKILL.md` plus `templates/`. After editing either, run `./install.
 
 ## License
 
-[MIT](LICENSE) © Atlas Fitness AI, Inc.
+[MIT](LICENSE) © Atlas Fitness AI, Inc. The `/todo` command name is deliberate: Fathom is the product, `todo` is what you type.

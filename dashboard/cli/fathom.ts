@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /*
- * todo — team sync for the TODO skill.
+ * fathom — team sync for the Fathom todo skill.
  *
- *   todo login [team]        sign in with GitHub for a team (one time per machine)
- *   todo logout [team]       forget that team's stored session
- *   todo whoami              show who is signed in, per team
- *   todo sync [path]         push local edits, then regenerate the task files
- *   todo sync --pull [path]  regenerate only, ignoring local edits
- *   todo sync --force [path] allow a push that deletes many tasks
- *   todo sync --all          sync every registered project
+ *   fathom login [team]        sign in with GitHub for a team (one time per machine)
+ *   fathom logout [team]       forget that team's stored session
+ *   fathom whoami              show who is signed in, per team
+ *   fathom sync [path]         push local edits, then regenerate the task files
+ *   fathom sync --pull [path]  regenerate only, ignoring local edits
+ *   fathom sync --force [path] allow a push that deletes many tasks
+ *   fathom sync --all          sync every registered project
  *
  * With one team configured, [team] is optional everywhere. Exits 0 with a
  * short message when sync is not configured, so the skill can call it
@@ -123,7 +123,7 @@ async function main() {
     case "-h":
       out(
         [
-          "usage: todo <command>",
+          "usage: fathom <command>",
           "",
           "  login [team]          sign in with GitHub",
           "  logout [team]         forget the stored session",
@@ -131,15 +131,15 @@ async function main() {
           "  sync [path]           push local edits, then regenerate TODO.md / DONE.md",
           "    --pull              regenerate only, ignore local edits",
           "    --force             allow a push that deletes many tasks",
-          "    --all               sync every project in ~/.atlas-todo/config.json",
+          "    --all               sync every project in ~/.fathom/config.json",
           "",
-          "Teams are configured under `teams` in ~/.atlas-todo/config.json; each is one Supabase project.",
+          "Teams are configured under `teams` in ~/.fathom/config.json; each is one Supabase project.",
         ].join("\n")
       )
       return
 
     case "login": {
-      if (!configured) fail("Team sync is not configured. Add a `teams` block to ~/.atlas-todo/config.json first.")
+      if (!configured) fail("Team sync is not configured. Add a `teams` block to ~/.fathom/config.json first.")
       const team = await pickTeam(teams, positional[0], "login")
       const session = await login(teams[team], team, out)
       out(`Signed in to "${team}" as ${session.user.name ?? session.user.email ?? session.user.id}`)
@@ -162,11 +162,11 @@ async function main() {
       for (const team of Object.keys(teams)) {
         const stored = await readStoredSession(team, Object.keys(teams)[0] === team)
         if (!stored) {
-          out(`${team}: not signed in. Run: todo login ${team}`)
+          out(`${team}: not signed in. Run: fathom login ${team}`)
           continue
         }
         const auth = await authFor(teams, team)
-        out(auth ? `${team}: ${auth.displayName} (${auth.user.email ?? auth.user.id})` : `${team}: session expired. Run: todo login ${team}`)
+        out(auth ? `${team}: ${auth.displayName} (${auth.user.email ?? auth.user.id})` : `${team}: session expired. Run: fathom login ${team}`)
       }
       return
     }
@@ -205,7 +205,7 @@ async function main() {
           const auth = await authFor(teams, which.team)
           if (!auth) {
             failed = true
-            process.stderr.write(`${path}: not signed in to team "${which.team}". Run: todo login ${which.team}\n`)
+            process.stderr.write(`${path}: not signed in to team "${which.team}". Run: fathom login ${which.team}\n`)
             continue
           }
           const result = await syncProject(auth, path, { ...options, team: which.team })
@@ -220,7 +220,7 @@ async function main() {
     }
 
     default:
-      fail(`Unknown command: ${command}. Run: todo help`)
+      fail(`Unknown command: ${command}. Run: fathom help`)
   }
 }
 

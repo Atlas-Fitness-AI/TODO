@@ -9,11 +9,11 @@ import type { SyncConfig } from "../types"
 
 /*
  * Server-side (CLI and Next.js API) Supabase session. The browser never
- * holds credentials; everything goes through ~/.atlas-todo/session.json,
+ * holds credentials; everything goes through ~/.fathom/session.json,
  * which `todo login` writes and both the CLI and the dashboard server read.
  */
 
-const CONFIG_DIR = join(homedir(), ".atlas-todo")
+const CONFIG_DIR = join(homedir(), ".fathom")
 const SESSIONS_DIR = join(CONFIG_DIR, "sessions")
 /** Pre-teams session file; read as the session for the first team when its own file is missing. */
 const LEGACY_SESSION_PATH = join(CONFIG_DIR, "session.json")

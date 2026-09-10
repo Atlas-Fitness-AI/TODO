@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install/update the shared todo skill for Claude Code and Codex.
+# Install/update Fathom: the shared todo skill for Claude Code and Codex.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -15,7 +15,7 @@ Installs for both agents by default:
   Codex:       <prefix>/.agents/skills/todo
 
 The prefix defaults to your home directory. Use --prefix for a staged install.
-The shared dashboard configuration lives at <prefix>/.atlas-todo.
+The shared dashboard configuration lives at <prefix>/.fathom.
 EOF
 }
 
@@ -74,8 +74,8 @@ if [ "$INSTALL_TARGET" = "both" ] || [ "$INSTALL_TARGET" = "codex" ]; then
 fi
 
 # Migrate config from older locations (one-time)
-CONFIG_DIR="$INSTALL_PREFIX/.atlas-todo"
-for OLD in "$INSTALL_PREFIX/.todo" "$INSTALL_PREFIX/.claudedo"; do
+CONFIG_DIR="$INSTALL_PREFIX/.fathom"
+for OLD in "$INSTALL_PREFIX/.atlas-todo" "$INSTALL_PREFIX/.todo" "$INSTALL_PREFIX/.claudedo"; do
   if [ -d "$OLD" ] && [ ! -d "$CONFIG_DIR" ]; then
     mv "$OLD" "$CONFIG_DIR"
     echo "Migrated config from $OLD to $CONFIG_DIR"
@@ -89,24 +89,29 @@ if [ -d "$DASHBOARD_DIR" ]; then
   echo "$DASHBOARD_DIR" > "$CONFIG_DIR/dashboard-path"
   echo "Dashboard path saved to $CONFIG_DIR/dashboard-path"
 
-  # The `todo` command (team sync) runs the dashboard's CLI with bun.
+  # The `fathom` command (team sync) runs the dashboard's CLI with bun.
   mkdir -p "$CONFIG_DIR/bin"
   {
     echo '#!/bin/bash'
-    echo '# Installed by TODO install.sh. Runs the team sync CLI from the dashboard checkout.'
+    echo '# Installed by Fathom install.sh. Runs the team sync CLI from the dashboard checkout.'
     echo "DASH=\"\$(cat \"$CONFIG_DIR/dashboard-path\" 2>/dev/null)\""
-    echo 'if [ -z "$DASH" ] || [ ! -f "$DASH/cli/todo.ts" ]; then'
-    echo '  echo "todo: dashboard not found; run ./install.sh from the TODO repo" >&2'
+    echo 'if [ -z "$DASH" ] || [ ! -f "$DASH/cli/fathom.ts" ]; then'
+    echo '  echo "fathom: dashboard not found; run ./install.sh from the Fathom repo" >&2'
     echo '  exit 1'
     echo 'fi'
     echo 'if ! command -v bun >/dev/null 2>&1; then'
-    echo '  echo "todo: bun is required (https://bun.sh)" >&2'
+    echo '  echo "fathom: bun is required (https://bun.sh)" >&2'
     echo '  exit 1'
     echo 'fi'
-    echo 'exec bun run "$DASH/cli/todo.ts" "$@"'
-  } > "$CONFIG_DIR/bin/todo"
-  chmod +x "$CONFIG_DIR/bin/todo"
-  echo "todo command installed to $CONFIG_DIR/bin/todo"
+    echo 'exec bun run "$DASH/cli/fathom.ts" "$@"'
+  } > "$CONFIG_DIR/bin/fathom"
+  chmod +x "$CONFIG_DIR/bin/fathom"
+  # `todo` still works as an alias, and the pre-rename path keeps working for
+  # project guidance written before the rename.
+  ln -sf "$CONFIG_DIR/bin/fathom" "$CONFIG_DIR/bin/todo"
+  mkdir -p "$INSTALL_PREFIX/.atlas-todo/bin"
+  ln -sf "$CONFIG_DIR/bin/fathom" "$INSTALL_PREFIX/.atlas-todo/bin/todo"
+  echo "fathom command installed to $CONFIG_DIR/bin/fathom"
 
   if [ -f "$DASHBOARD_DIR/package.json" ] && command -v bun >/dev/null 2>&1; then
     (cd "$DASHBOARD_DIR" && bun install --silent) && echo "Dashboard dependencies installed"

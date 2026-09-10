@@ -29,7 +29,7 @@ function PeopleIcon() {
 /**
  * Header control for team sync: who you are, and which pet stands in for
  * you on the tasks you're working on. Hidden when sync is not configured.
- * Sign-in happens in a terminal (`todo login`), since the server holds it.
+ * Sign-in happens in a terminal (`fathom login`), since the server holds it.
  */
 export function TeamMenu({ status }: { status: SyncStatus | null }) {
   const router = useRouter()
@@ -92,7 +92,7 @@ export function TeamMenu({ status }: { status: SyncStatus | null }) {
               </p>
             ) : (
               <p className="text-muted-foreground">
-                Run <code className="text-primary/80">todo login</code> in a terminal, then reload. Until then this dashboard shows local files only.
+                Run <code className="text-primary/80">fathom login</code> in a terminal, then reload. Until then this dashboard shows local files only.
               </p>
             )}
           </div>

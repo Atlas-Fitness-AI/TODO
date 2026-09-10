@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/todo-install.XXXXXX")"
+TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/fathom-install.XXXXXX")"
 TEST_DIR="$(cd "$TEST_DIR" && pwd)"
 trap 'rm -rf "$TEST_DIR"' EXIT
 
@@ -31,15 +31,15 @@ if grep -qE '^(argument-hint|allowed-tools):' "$TEST_DIR/both agents/.agents/ski
   echo "Codex bundle contains Claude-specific frontmatter" >&2
   exit 1
 fi
-test "$(cat "$TEST_DIR/both agents/.atlas-todo/dashboard-path")" = "$TEST_DIR/source repo/dashboard"
+test "$(cat "$TEST_DIR/both agents/.fathom/dashboard-path")" = "$TEST_DIR/source repo/dashboard"
 
 # Reinstall updates stale resources and preserves the existing project registry.
-printf '%s\n' '{"projects":[{"name":"Example","path":"/example"}]}' > "$TEST_DIR/both agents/.atlas-todo/config.json"
-cp "$TEST_DIR/both agents/.atlas-todo/config.json" "$TEST_DIR/expected-config"
+printf '%s\n' '{"projects":[{"name":"Example","path":"/example"}]}' > "$TEST_DIR/both agents/.fathom/config.json"
+cp "$TEST_DIR/both agents/.fathom/config.json" "$TEST_DIR/expected-config"
 printf '%s\n' 'outdated skill' > "$TEST_DIR/both agents/.agents/skills/todo/SKILL.md"
 bash "$REPO_DIR/install.sh" --both --prefix "$TEST_DIR/both agents"
 assert_bundle "$TEST_DIR/both agents/.agents/skills/todo"
-cmp "$TEST_DIR/expected-config" "$TEST_DIR/both agents/.atlas-todo/config.json"
+cmp "$TEST_DIR/expected-config" "$TEST_DIR/both agents/.fathom/config.json"
 
 for agent in claude codex; do
   bash "$REPO_DIR/install.sh" "--$agent" --prefix "$TEST_DIR/$agent"
@@ -54,7 +54,7 @@ for legacy in .todo .claudedo; do
   mkdir -p "$prefix/$legacy"
   cp "$TEST_DIR/expected-config" "$prefix/$legacy/config.json"
   bash "$REPO_DIR/install.sh" --codex --prefix "$prefix"
-  cmp "$TEST_DIR/expected-config" "$prefix/.atlas-todo/config.json"
+  cmp "$TEST_DIR/expected-config" "$prefix/.fathom/config.json"
   test ! -e "$prefix/$legacy"
 done
 
@@ -62,7 +62,7 @@ done
 mkdir -p "$TEST_DIR/both agents/.todo"
 printf '%s\n' 'legacy sentinel' > "$TEST_DIR/both agents/.todo/config.json"
 bash "$REPO_DIR/install.sh" --prefix "$TEST_DIR/both agents"
-cmp "$TEST_DIR/expected-config" "$TEST_DIR/both agents/.atlas-todo/config.json"
+cmp "$TEST_DIR/expected-config" "$TEST_DIR/both agents/.fathom/config.json"
 test "$(cat "$TEST_DIR/both agents/.todo/config.json")" = 'legacy sentinel'
 
 if bash "$REPO_DIR/install.sh" --prefix; then

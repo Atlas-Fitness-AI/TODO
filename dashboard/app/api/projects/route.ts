@@ -7,7 +7,7 @@ import { readActivityLog } from "@/lib/activity-log"
 import { getProjectRemote } from "@/lib/git-remote"
 import { getServerAuth, defaultTeam } from "@/lib/sync/server"
 
-const CONFIG_DIR = join(homedir(), ".atlas-todo")
+const CONFIG_DIR = join(homedir(), ".fathom")
 const CONFIG_PATH = join(CONFIG_DIR, "config.json")
 
 interface ProjectConfig {

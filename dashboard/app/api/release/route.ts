@@ -12,7 +12,7 @@ import {
 import { readActivityLog } from "@/lib/activity-log"
 import type { AppConfig, ActivityEvent, TodoItem } from "@/lib/types"
 
-const CONFIG_PATH = join(homedir(), ".atlas-todo", "config.json")
+const CONFIG_PATH = join(homedir(), ".fathom", "config.json")
 
 async function isRegisteredProject(projectPath: string): Promise<boolean> {
   try {

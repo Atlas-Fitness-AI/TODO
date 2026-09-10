@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### New
+- The project is now called Fathom, with an anglerfish mascot. The `/todo` command is unchanged. Configuration moved to `~/.fathom` (migrated automatically), and the CLI is `fathom`, with `todo` kept as an alias.
+- Screenshots in the README.
+- Resolved cards credit the pet that finished them.
+- Multiple teams, each its own Supabase project, with a switcher in the dashboard.
+- Presence: working, away, and idle, from a heartbeat.
+- Four more pets, and a reworked activity feed.
+
 ## v0.3.0 — 2026-09-10
 
 ### New

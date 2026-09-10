@@ -9,7 +9,7 @@ const AWAY_AFTER_MS = 5 * 60_000
 import { parseTodoMarkdown, parseDoneMarkdown } from "./parser"
 import { getProjectRemote } from "./git-remote"
 
-const CONFIG_PATH = join(homedir(), ".atlas-todo", "config.json")
+const CONFIG_PATH = join(homedir(), ".fathom", "config.json")
 
 export async function loadConfig(): Promise<AppConfig> {
   try {

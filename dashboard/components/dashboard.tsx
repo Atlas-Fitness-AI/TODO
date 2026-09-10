@@ -208,8 +208,8 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
 
   useEffect(() => {
     document.title = selectedProject
-      ? `TODO | ${selectedProject.name}`
-      : "TODO"
+      ? `Fathom | ${selectedProject.name}`
+      : "Fathom"
   }, [selectedProject])
 
   const existingTasks = useMemo(() => {
@@ -595,7 +595,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                   </div>
                   <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                     {projects.length === 0
-                      ? "no projects configured // edit ~/.atlas-todo/config.json"
+                      ? "no projects configured // edit ~/.fathom/config.json"
                       : "select a project from the sidebar"}
                   </p>
                 </div>
@@ -798,10 +798,10 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
               <div className="space-y-5">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 mb-1.5">
-                    what is todo
+                    what is fathom
                   </div>
                   <p className="text-muted-foreground leading-relaxed">
-                    A shared TODO system for <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:text-primary underline underline-offset-2">Claude Code</a> and <a href="https://developers.openai.com/codex/skills/" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:text-primary underline underline-offset-2">Codex</a>. Either agent can pick up the same tasks, with enforced standards for priority, category, file references, context, and acceptance criteria.
+                    Fathom is a shared task system for <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:text-primary underline underline-offset-2">Claude Code</a> and <a href="https://developers.openai.com/codex/skills/" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:text-primary underline underline-offset-2">Codex</a>. Either agent can pick up the same tasks, with enforced standards for priority, category, file references, context, and acceptance criteria.
                   </p>
                 </div>
 
@@ -863,7 +863,7 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
                     <li><span className="text-muted-foreground/40">&#x2013;</span> Tasks live in each project&apos;s <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODO.md</code></li>
                     <li><span className="text-muted-foreground/40">&#x2013;</span> Completed items archive to <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">DONE.md</code></li>
                     <li><span className="text-muted-foreground/40">&#x2013;</span> Rules and categories in <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">TODORULES.md</code></li>
-                    <li><span className="text-muted-foreground/40">&#x2013;</span> Project list in <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">~/.atlas-todo/config.json</code></li>
+                    <li><span className="text-muted-foreground/40">&#x2013;</span> Project list in <code className="text-primary/80 bg-primary/5 border border-primary/10 px-1">~/.fathom/config.json</code></li>
                   </ul>
                 </div>
               </div>
