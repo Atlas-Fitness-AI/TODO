@@ -545,3 +545,12 @@
   .pet-frame, .pet-zzz { animation: none !important; }
   .pet-frame + .pet-frame { display: none; }
 }
+
+/* Fathom's lure breathes. */
+@keyframes mascot-lure {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-lure { animation: none !important; }
+}

@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/logo.svg" width="112" height="112" alt="Sudo the octopus, the TODO mascot"></p>
+<p align="center"><img src="assets/logo.svg" width="112" height="112" alt="Fathom the anglerfish, the TODO mascot"></p>
 
 <h1 align="center">TODO</h1>
 
