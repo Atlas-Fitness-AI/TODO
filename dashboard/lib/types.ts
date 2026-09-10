@@ -40,12 +40,18 @@ export interface TodoSection {
 
 export type PetKey = "cat" | "dog" | "frog" | "octopus" | "owl" | "snail" | "robot" | "dragon"
 
+export type Presence = "working" | "away" | "idle"
+
 export interface TeamMember {
   userId: string
   name: string
   pet: PetKey | null
   /** True when this member has any Active task across the team. */
   working: boolean
+  /** working = active task and seen recently; away = active task but quiet; idle = no active task. */
+  presence: Presence
+  /** Last heartbeat from a sync or an open dashboard, ISO string. */
+  lastSeen: string | null
 }
 
 export interface TeamPresence {

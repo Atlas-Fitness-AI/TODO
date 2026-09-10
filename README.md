@@ -148,7 +148,7 @@ That starts the dev server if needed, finds a free port, and opens your browser.
 
 **Keyboard.** `1` to `5` switch tabs, `j` and `k` move between cards, `n` adds a task, `/` focuses search, `c` collapses cards, `?` opens help.
 
-**Pets.** With team sync on, pick a pixel companion from the header menu: Pixel the cat, Bit the dog, Ping the frog, Sudo the octopus, Null the owl, Lag the snail, Daemon the robot, or Kernel the dragon. Your pet appears on every task you start, typing away where the whole team can see it, and the sidebar shows the crew, awake when working and asleep when not.
+**Pets.** With team sync on, pick a pixel companion from the header menu: Pixel the cat, Bit the dog, Ping the frog, Sudo the octopus, Null the owl, Lag the snail, Daemon the robot, or Kernel the dragon. Your pet appears on every task you start, typing away where the whole team can see it. The sidebar shows the crew: typing when someone is working, dozing at the keyboard when they have a task but haven't been seen for five minutes, and asleep when they have nothing active. Presence comes from a heartbeat that every skill command and open dashboard sends.
 
 Projects are stored in `~/.atlas-todo/config.json`. Add them from the sidebar or edit the file.
 

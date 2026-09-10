@@ -6,7 +6,7 @@
 - Works in Codex as well as Claude Code. One skill, one installer, `$todo` or `/todo`.
 - Team sync: tasks can live in a shared Supabase database so everyone sees the same board in real time, from either agent or the dashboard. Task files become local caches kept in step by a `todo` command.
 - Every task records who created it, shown as an Author line and on cards.
-- Pets: pick a pixel companion and it works alongside you on the tasks you start, visible to the whole team, with a crew roster in the sidebar.
+- Pets: pick a pixel companion and it works alongside you on the tasks you start, visible to the whole team, with a crew roster in the sidebar that tells working from away from idle.
 - Two themes: Abyss (deep ocean) and Mono (zinc). Every theme now has its own status and accent colors.
 - Collapsible task cards, with a header toggle and the `c` key.
 - Projects are only shared when you say so; the first sync asks.

@@ -2,7 +2,10 @@ import { readFile } from "fs/promises"
 import { existsSync } from "fs"
 import { join } from "path"
 import { homedir } from "os"
-import type { AppConfig, ParsedProject, ProjectConfig, SyncConfig, TeamMember, TeamPresence, PetKey } from "./types"
+import type { AppConfig, ParsedProject, ProjectConfig, SyncConfig, TeamMember, TeamPresence, PetKey, Presence } from "./types"
+
+/** Seen within this window counts as present. */
+const AWAY_AFTER_MS = 5 * 60_000
 import { parseTodoMarkdown, parseDoneMarkdown } from "./parser"
 import { getProjectRemote } from "./git-remote"
 
@@ -137,16 +140,25 @@ export async function loadAllProjects(): Promise<ParsedProject[]> {
   let presenceByProject = new Map<number, TeamPresence>()
   try {
     const [{ data: profiles }, { data: active }] = await Promise.all([
-      auth.client.from("profiles").select("id, display_name, pet"),
+      auth.client.from("profiles").select("id, display_name, pet, last_seen"),
       auth.client.from("tasks").select("id, project_id, active_by").eq("status", "Active").eq("archived", false).not("active_by", "is", null),
     ])
     const workingIds = new Set((active ?? []).map((t) => t.active_by as string))
-    const members: TeamMember[] = (profiles ?? []).map((p) => ({
-      userId: p.id as string,
-      name: (p.display_name as string | null) ?? "teammate",
-      pet: (p.pet as PetKey | null) ?? null,
-      working: workingIds.has(p.id as string),
-    }))
+    const now = Date.now()
+    const members: TeamMember[] = (profiles ?? []).map((p) => {
+      const working = workingIds.has(p.id as string)
+      const lastSeen = (p.last_seen as string | null) ?? null
+      const seenRecently = lastSeen !== null && now - Date.parse(lastSeen) < AWAY_AFTER_MS
+      const presence: Presence = !working ? "idle" : seenRecently ? "working" : "away"
+      return {
+        userId: p.id as string,
+        name: (p.display_name as string | null) ?? "teammate",
+        pet: (p.pet as PetKey | null) ?? null,
+        working,
+        presence,
+        lastSeen,
+      }
+    })
     presenceByProject = new Map()
     for (const t of team) {
       presenceByProject.set(t.id, { members, activeBy: {} })

@@ -11,7 +11,7 @@ import type { PetKey } from "@/lib/types"
  * Palette:  . transparent   f foreground   p primary   m muted   k dark eye
  */
 
-export type PetState = "idle" | "sleep" | "work"
+export type PetState = "idle" | "sleep" | "work" | "away"
 
 interface PetDef {
   name: string
@@ -267,13 +267,16 @@ export function Pet({ kind, state = "idle", size = 24, title, className }: PetPr
   if (!def) return null
 
   const working = state === "work"
-  const height = working ? 10 : 8
+  const away = state === "away"
+  const height = working || away ? 10 : 8
   const px = size / 8
   const label = title ?? `${def.name} the ${kind}`
-  const period = working ? "0.5s" : state === "sleep" ? "2.4s" : "1.1s"
+  const period = working ? "0.5s" : state === "sleep" || away ? "2.4s" : "1.1s"
 
   const frames: string[][] =
-    state === "sleep" ? [closeEyes(def.frames[0]), closeEyes(def.frames[1])] : [def.frames[0], def.frames[1]]
+    state === "sleep" || away ? [closeEyes(def.frames[0]), closeEyes(def.frames[1])] : [def.frames[0], def.frames[1]]
+  // Away: still at the keyboard, but no keys light up.
+  const keyboard: [string[], string[]] = away ? [["mmmmmmmm", "........"], ["mmmmmmmm", "........"]] : KEYBOARD
 
   return (
     <svg
@@ -303,10 +306,10 @@ export function Pet({ kind, state = "idle", size = 24, title, className }: PetPr
           }
         >
           <Frame rows={rows} />
-          {working && <Frame rows={KEYBOARD[i % 2]} y={8} />}
+          {(working || away) && <Frame rows={keyboard[i % 2]} y={8} />}
         </g>
       ))}
-      {state === "sleep" && (
+      {(state === "sleep" || away) && (
         <g
           className="pet-zzz"
           style={{ animationName: "pet-zzz", animationDuration: "2.4s", animationTimingFunction: "ease-out", animationIterationCount: "infinite" }}

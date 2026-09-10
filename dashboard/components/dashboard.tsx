@@ -195,13 +195,13 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
   const activityEvents = selectedProject?.activity ?? []
 
   // Who is on an Active task, for the pet on its card.
-  function workerFor(item: TodoItem): { name: string; pet: PetKey | null } | null {
+  function workerFor(item: TodoItem): { name: string; pet: PetKey | null; away?: boolean } | null {
     const team = selectedProject?.team
     if (!team || !item.id) return null
     const userId = team.activeBy[item.id]
     if (!userId) return null
     const member = team.members.find((m) => m.userId === userId)
-    return member ? { name: member.name, pet: member.pet } : null
+    return member ? { name: member.name, pet: member.pet, away: member.presence === "away" } : null
   }
 
   useEffect(() => {

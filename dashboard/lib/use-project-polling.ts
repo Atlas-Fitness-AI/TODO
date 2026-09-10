@@ -26,7 +26,7 @@ export function useProjectPolling(initialProjects: ParsedProject[]): {
         latestActivity: p.activity?.[0]?.date ?? "",
         // Team presence: pets and who is on which task must count as change too.
         team: p.team
-          ? p.team.members.map((m) => `${m.userId}:${m.pet ?? ""}:${m.working ? 1 : 0}`).join(",") +
+          ? p.team.members.map((m) => `${m.userId}:${m.pet ?? ""}:${m.presence}`).join(",") +
             "|" +
             Object.entries(p.team.activeBy).map(([t, u]) => `${t}=${u}`).sort().join(",")
           : "",

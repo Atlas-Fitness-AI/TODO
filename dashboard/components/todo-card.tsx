@@ -101,7 +101,7 @@ interface TodoCardProps {
   /** Hide the long-form fields until the card is clicked. */
   collapsed?: boolean
   /** Whoever moved this task into Active, with their pet (team sync). */
-  worker?: { name: string; pet: PetKey | null } | null
+  worker?: { name: string; pet: PetKey | null; away?: boolean } | null
 }
 
 export function TodoCard({ item, status, projectPath, onMoved, focused, resolvedTitles, branches = [], collapsed = false, worker = null }: TodoCardProps) {
@@ -482,8 +482,10 @@ export function TodoCard({ item, status, projectPath, onMoved, focused, resolved
             )}
             {worker?.pet && status === "Active" && (
               <span className="ml-auto flex items-center gap-2 text-primary/70" title={`${petName(worker.pet)} is on it with ${worker.name}`}>
-                <span className="normal-case tracking-normal">{petName(worker.pet)} is on it</span>
-                <Pet kind={worker.pet} state="work" size={20} />
+                <span className="normal-case tracking-normal">
+                  {petName(worker.pet)} {worker.away ? "is on it, but away" : "is on it"}
+                </span>
+                <Pet kind={worker.pet} state={worker.away ? "away" : "work"} size={20} />
               </span>
             )}
           </div>

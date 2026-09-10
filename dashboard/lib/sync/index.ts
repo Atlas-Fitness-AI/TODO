@@ -429,6 +429,18 @@ async function ensureGitignore(projectPath: string, log: (msg: string) => void):
   }
 }
 
+/* ------------------------------------------------------------- presence */
+
+const HEARTBEAT_MS = 60_000
+let lastHeartbeat = 0
+
+/** Stamp profiles.last_seen for the current user, at most once a minute per process. */
+export async function touchPresence(client: SupabaseClient, userId: string): Promise<void> {
+  if (Date.now() - lastHeartbeat < HEARTBEAT_MS) return
+  lastHeartbeat = Date.now()
+  await client.from("profiles").update({ last_seen: new Date().toISOString() }).eq("id", userId)
+}
+
 /* ------------------------------------------------------------------ sync */
 
 export interface SyncOptions {
@@ -462,6 +474,7 @@ export async function syncProject(auth: AuthedClient, projectPath: string, opts:
   const doneContent = await readIfExists(donePath)
 
   const project = await ensureProject(client, user.id, remote, await projectNameFrom(projectPath, todoContent))
+  void touchPresence(client, user.id)
   const state = await readState(projectPath)
   let rows = await fetchTasks(client, project.id)
 

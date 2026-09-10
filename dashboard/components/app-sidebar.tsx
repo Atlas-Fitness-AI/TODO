@@ -36,7 +36,22 @@ import { toast } from "sonner"
 import type { ParsedProject } from "@/lib/types"
 import { getActiveItemCount } from "@/lib/parser"
 import { AddProjectDialog } from "@/components/add-project-dialog"
-import { Pet, petName } from "@/components/pets"
+import { Pet, petName, type PetState } from "@/components/pets"
+import { formatRelativeTime } from "@/lib/activity"
+import type { Presence } from "@/lib/types"
+
+const PRESENCE_LABEL: Record<Presence, string> = { working: "working", away: "away", idle: "idle" }
+const PET_STATE: Record<Presence, PetState> = { working: "work", away: "away", idle: "sleep" }
+const PRESENCE_TEXT: Record<Presence, string> = {
+  working: "text-primary",
+  away: "text-status-queued/80",
+  idle: "text-muted-foreground/50",
+}
+const PRESENCE_DOT: Record<Presence, string> = {
+  working: "bg-status-active animate-pulse",
+  away: "bg-status-queued/70",
+  idle: "bg-muted-foreground/30",
+}
 
 interface AppSidebarProps {
   projects: ParsedProject[]
@@ -315,7 +330,7 @@ export function AppSidebar({
               <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
                 <span>crew</span>
                 <span>
-                  {crew.filter((m) => m.working).length}/{crew.length} working
+                  {crew.filter((m) => m.presence === "working").length}/{crew.length} working
                 </span>
               </div>
               <div className="grid gap-1.5">
@@ -323,20 +338,25 @@ export function AppSidebar({
                   <div
                     key={m.userId}
                     className={`flex items-center gap-3 border px-2.5 py-2 transition-colors ${
-                      m.working ? "border-primary/40 bg-primary/5" : "border-border/50 bg-card/40"
+                      m.presence === "working"
+                        ? "border-primary/40 bg-primary/5"
+                        : m.presence === "away"
+                          ? "border-status-queued/30 bg-card/40"
+                          : "border-border/50 bg-card/40"
                     }`}
-                    title={`${petName(m.pet)} the ${m.pet} · ${m.name} · ${m.working ? "working on a task" : "idle"}`}
+                    title={`${petName(m.pet)} the ${m.pet} · ${m.name} · ${PRESENCE_LABEL[m.presence]}${m.lastSeen ? ` · seen ${formatRelativeTime(m.lastSeen)}` : ""}`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-end justify-center">
-                      <Pet kind={m.pet!} state={m.working ? "work" : "sleep"} size={28} title={`${petName(m.pet)} (${m.name})`} />
+                      <Pet kind={m.pet!} state={PET_STATE[m.presence]} size={28} title={`${petName(m.pet)} (${m.name})`} />
                     </div>
                     <div className="min-w-0 flex-1 leading-tight">
                       <div className="truncate text-[11px] font-mono font-medium uppercase tracking-wider">{m.name}</div>
-                      <div className={`truncate text-[9px] font-mono uppercase tracking-[0.15em] ${m.working ? "text-primary" : "text-muted-foreground/50"}`}>
-                        {petName(m.pet)} · {m.working ? "working" : "idle"}
+                      <div className={`truncate text-[9px] font-mono uppercase tracking-[0.15em] ${PRESENCE_TEXT[m.presence]}`}>
+                        {petName(m.pet)} · {PRESENCE_LABEL[m.presence]}
+                        {m.presence === "away" && m.lastSeen && ` · ${formatRelativeTime(m.lastSeen)}`}
                       </div>
                     </div>
-                    <span className={`size-1.5 shrink-0 rounded-full ${m.working ? "bg-status-active animate-pulse" : "bg-muted-foreground/30"}`} />
+                    <span className={`size-1.5 shrink-0 rounded-full ${PRESENCE_DOT[m.presence]}`} />
                   </div>
                 ))}
               </div>
