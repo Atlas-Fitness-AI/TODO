@@ -83,6 +83,7 @@ Use the `todo` skill: `/todo` in Claude Code or `$todo` in Codex. Both use the s
 - `scan` — sync inline TODO/FIXME comments
 - `changelog` / `release [version]` — preview or write release notes
 - `dashboard` — launch the shared dashboard
+- `team [setup|join|invite|status]` — set up or join team sync, or invite a teammate
 - `init` / `update` — initialize the system or refresh its templates and guidance
 
 For example: `/todo start Fix login timeout` in Claude Code or `$todo start Fix login timeout` in Codex.

@@ -1,7 +1,7 @@
 ---
 name: todo
 description: Manage project TODO items with strict documentation standards. Use when working with TODO.md, when the user mentions tasks, bugs, features, work items, or task tracking, or when the user invokes the todo skill.
-argument-hint: "[add|done|move|start|next|stuck|status|scan|changelog|release|dashboard|init|update|help]"
+argument-hint: "[add|done|move|start|next|stuck|status|scan|changelog|release|dashboard|team|init|update|help]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git rev-parse:*), Bash(git branch:*), Bash(todo:*), Bash(~/.fathom/bin/fathom:*)
 ---
 
@@ -365,6 +365,34 @@ Open the TODO dashboard in the browser, starting the dev server if needed.
    - Linux: `xdg-open http://localhost:<port>`
 5. Confirm to the user that the dashboard is running and which port it's on.
 
+### `team` - Set Up or Join Team Sync
+
+Walk the user through team sync without sending them to the README. Team sync is optional: tasks move from local files into a shared Supabase database so everyone on the team sees the same board. Read the arguments after `team`:
+
+- `team` or `team setup` — create a new team (a new Supabase project).
+- `team join` — join a team someone else set up.
+- `team invite` — add a teammate to an existing team.
+- `team status` — show configured teams and who is signed in (`~/.fathom/bin/fathom whoami`).
+
+The Fathom checkout lives at the directory named in `~/.fathom/dashboard-path`, minus the trailing `dashboard`; call it `<fathom>` below. If that file is missing, tell the user to clone `https://github.com/Atlas-Fitness-AI/fathom` and run `./install.sh`, then stop.
+
+**Prerequisites (check before anything else):** `bun` on the PATH; for `setup`, the Supabase CLI (`supabase --version`; install with `brew install supabase/tap/supabase` on macOS). Offer to run the installs; don't run them without asking.
+
+**`setup` — three steps happen in the user's browser; do them in this order, giving exact values to paste:**
+1. **Create the Supabase project.** At supabase.com, New project: any name, a generated database password they keep, region nearest them. On the create form: uncheck "Automatically expose new tables", check "Enable automatic RLS". They then read you the project ref (the twenty-character id in the dashboard URL) and the publishable key (Project Settings → API Keys, starts with `sb_publishable_`). Never ask for the secret key or the database password.
+2. **Push the schema.** Run from the Fathom checkout: `cd <fathom> && supabase login` (opens a browser; interactive, so ask the user to run it in their terminal if your shell has no TTY), `supabase link --project-ref <ref>` (asks for the database password; same TTY caveat), then `supabase db push --yes`. Confirm with `supabase migration list --linked` that every migration shows as applied.
+3. **GitHub sign-in.** Have them create a GitHub OAuth app at github.com → Settings → Developer settings → OAuth Apps: homepage `http://localhost:3000`, callback `https://<ref>.supabase.co/auth/v1/callback`; generate a client secret. In Supabase → Authentication → Sign In / Providers, enable GitHub and paste the client ID and secret; on the same page turn **off** "Allow new users to sign up". Under Authentication → URL Configuration: Site URL `http://localhost:3000`, add `http://localhost:300*/**` to Redirect URLs (plus their proxy origin if they use one).
+4. **Register and sign in.** Ask for a team name (letters, digits, dashes). Add it to `~/.fathom/config.json` under `teams` with `url` (`https://<ref>.supabase.co`) and `publishableKey`, creating the `teams` object if needed and preserving everything else in the file. Then run `~/.fathom/bin/fathom login <team>` (opens a browser) and confirm with `~/.fathom/bin/fathom whoami`. Alternatively point them at the dashboard: header **team** button → **add a team** does steps 4 in one dialog.
+5. **Share projects.** For each project they want on the board, set `sync: <team>` in the config block of its `TODORULES.md` (ask first; see Team Sync above) and run `~/.fathom/bin/fathom sync` there. Remind them the task files leave git: sync adds them to `.gitignore`, and they untrack them once with `git rm --cached TODO.md DONE.md .todo-activity.json`.
+
+**`join`:** ask the person who set up the team for two values, the project URL and the publishable key. Then do step 4 with those, and step 5 for the repos they've cloned. Their GitHub email must have been invited first; if sign-in is refused with a signups-disabled message, that's why.
+
+**`invite`:** the inviter goes to Supabase → Authentication → Users → Add user → Send invitation, entering the teammate's GitHub primary email. No code changes. Then the teammate runs `join`.
+
+**`status`:** run `~/.fathom/bin/fathom whoami` and show it; if nothing is configured, offer `setup` or `join`.
+
+Never paste keys or passwords into files other than `~/.fathom/config.json`, and never commit that file.
+
 ### `scan` - Find Inline TODOs
 
 1. Use the host search tool (e.g. `rg` or Grep) to search for `// TODO:`, `# TODO:`, `<!-- TODO:`, and `// FIXME:` patterns across the codebase.
@@ -393,6 +421,7 @@ Display this quick reference using the current host’s invocation prefix (`$tod
 /todo changelog             Preview consumer-facing release notes (pending changes)
 /todo release [version]     Write pending changes to CHANGELOG.md and stamp items
 /todo dashboard             Launch the web dashboard in the browser
+/todo team [setup|join|invite|status]  Set up or join team sync
 /todo init                  Initialize TODO system (or migrate existing TODO.md)
 /todo update                Refresh TODORULES.md template and audit items
 /todo help                  Show this reference

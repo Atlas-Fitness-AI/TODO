@@ -73,6 +73,7 @@ $todo add Fix the login timeout        Codex
 | `/todo changelog` | Preview pending release notes |
 | `/todo release [version]` | Write release notes to `CHANGELOG.md` and stamp the items |
 | `/todo dashboard` | Launch the dashboard in your browser |
+| `/todo team` | Set up team sync, join a team, or invite a teammate, guided by the agent |
 | `/todo init` | Set up a project, or migrate an existing `TODO.md` |
 | `/todo update` | Refresh the rules template and audit existing items |
 | `/todo help` | Quick reference |
@@ -194,7 +195,7 @@ Task files leave git in shared projects. `fathom sync` adds them to `.gitignore`
 
 ### Setup
 
-One Supabase project equals one team. Everyone who signs in can read and write every task.
+One Supabase project equals one team. Everyone who signs in can read and write every task. You can also just ask your agent: `/todo team` walks through everything below, and `/todo team join` is the two-value version for a teammate.
 
 1. Create a free project at [supabase.com](https://supabase.com). On the create form, uncheck "Automatically expose new tables" and check "Enable automatic RLS".
 2. Push the schema from this repo:
