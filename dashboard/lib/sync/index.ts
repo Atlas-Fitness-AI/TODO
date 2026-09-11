@@ -453,11 +453,22 @@ async function ensureGitignore(projectPath: string, log: (msg: string) => void):
 const HEARTBEAT_MS = 60_000
 let lastHeartbeat = 0
 
-/** Stamp profiles.last_seen for the current user, at most once a minute per process. */
-export async function touchPresence(client: SupabaseClient, userId: string): Promise<void> {
+/**
+ * Stamp profiles.last_seen for the current user, at most once a minute per
+ * process. Also keeps display_name and avatar in step with GitHub: an invited
+ * user's profile is created from their email before they ever sign in, so
+ * the first heartbeat after sign-in is what gives them their real name.
+ */
+export async function touchPresence(client: SupabaseClient, userId: string, identity?: { displayName: string; avatarUrl?: string | null }): Promise<void> {
   if (Date.now() - lastHeartbeat < HEARTBEAT_MS) return
   lastHeartbeat = Date.now()
-  await client.from("profiles").update({ last_seen: new Date().toISOString() }).eq("id", userId)
+  await client
+    .from("profiles")
+    .update({
+      last_seen: new Date().toISOString(),
+      ...(identity && { display_name: identity.displayName, ...(identity.avatarUrl && { avatar_url: identity.avatarUrl }) }),
+    })
+    .eq("id", userId)
 }
 
 /* ------------------------------------------------------------------ sync */
@@ -498,7 +509,7 @@ export async function syncProject(auth: AuthedClient, projectPath: string, opts:
   const doneContent = await readIfExists(donePath)
 
   const project = await ensureProject(client, user.id, remote, await projectNameFrom(projectPath, todoContent))
-  void touchPresence(client, user.id)
+  void touchPresence(client, user.id, { displayName: auth.displayName, avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null })
   const state = await readState(projectPath)
   let rows = await fetchTasks(client, project.id)
 
