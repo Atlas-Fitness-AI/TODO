@@ -65,7 +65,7 @@ function displayNameOf(user: User): string {
   )
 }
 
-async function saveSession(team: string, session: Session): Promise<void> {
+export async function saveSession(team: string, session: Session): Promise<void> {
   await mkdir(SESSIONS_DIR, { recursive: true })
   const stored: StoredSession = {
     access_token: session.access_token,
@@ -186,5 +186,35 @@ export async function login(config: SyncConfig, team: string, log: (msg: string)
   })
 
   await saveSession(team, session)
+  return (await readStoredSession(team))!
+}
+
+/*
+ * Browser-driven login for the dashboard. The server starts the PKCE flow and
+ * keeps the client (which holds the code verifier) until the callback returns.
+ */
+const pendingLogins = new Map<string, { client: SupabaseClient; started: number }>()
+const PENDING_TTL_MS = 10 * 60_000
+
+export async function beginBrowserLogin(config: SyncConfig, team: string, redirectTo: string): Promise<string> {
+  const client = createServerClient(config)
+  const { data, error } = await client.auth.signInWithOAuth({
+    provider: "github",
+    options: { redirectTo, skipBrowserRedirect: true },
+  })
+  if (error || !data.url) throw new Error(error?.message ?? "Could not start sign-in")
+  pendingLogins.set(team, { client, started: Date.now() })
+  return data.url
+}
+
+export async function completeBrowserLogin(team: string, code: string): Promise<StoredSession> {
+  const pending = pendingLogins.get(team)
+  pendingLogins.delete(team)
+  if (!pending || Date.now() - pending.started > PENDING_TTL_MS) {
+    throw new Error("Sign-in expired or was not started from this dashboard. Try again.")
+  }
+  const { data, error } = await pending.client.auth.exchangeCodeForSession(code)
+  if (error || !data.session) throw new Error(error?.message ?? "Code exchange failed")
+  await saveSession(team, data.session)
   return (await readStoredSession(team))!
 }

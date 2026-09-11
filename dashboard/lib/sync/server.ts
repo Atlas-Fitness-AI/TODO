@@ -21,6 +21,12 @@ export interface SyncStatus {
 const cachedAuth = new Map<string, { auth: AuthedClient | null; expires: number }>()
 const AUTH_TTL_MS = 60_000
 
+/** Forget the cached auth for a team, e.g. right after a sign-in or sign-out. */
+export function invalidateAuth(team?: string): void {
+  if (team) cachedAuth.delete(team)
+  else cachedAuth.clear()
+}
+
 export { loadTeams }
 
 /** First configured team name, or null. */

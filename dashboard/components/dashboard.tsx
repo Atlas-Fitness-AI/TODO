@@ -206,6 +206,16 @@ export function Dashboard({ projects: initialProjects, defaultSidebarOpen, defau
     return member ? { name: member.name, pet: member.pet, presence: member.presence, lastSeen: member.lastSeen } : null
   }
 
+  // Result of a dashboard sign-in round trip (/api/teams/callback).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const result = params.get("signin")
+    if (!result) return
+    if (result.startsWith("ok")) toast.success(`Signed in as ${result.slice(4)}`)
+    else toast.error(`Sign-in ${result}`)
+    window.history.replaceState(null, "", window.location.pathname)
+  }, [])
+
   useEffect(() => {
     document.title = selectedProject
       ? `Fathom | ${selectedProject.name}`

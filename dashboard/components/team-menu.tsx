@@ -14,6 +14,8 @@ import { toast } from "sonner"
 import type { SyncStatus } from "@/lib/sync/server"
 import type { PetKey } from "@/lib/types"
 import { Pet, PETS, PET_KEYS } from "./pets"
+import { AddTeamDialog } from "./add-team-dialog"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 function PeopleIcon() {
   return (
@@ -34,7 +36,39 @@ function PeopleIcon() {
 export function TeamMenu({ status }: { status: SyncStatus | null }) {
   const router = useRouter()
   const [saving, setSaving] = useState<PetKey | null>(null)
-  if (!status || !status.configured) return null
+  const [addOpen, setAddOpen] = useState(false)
+
+  if (!status || !status.configured) {
+    // No team yet: the only action is setting one up.
+    return (
+      <>
+        <button
+          onClick={() => setAddOpen(true)}
+          className="h-7 flex items-center gap-2 px-2 text-muted-foreground hover:text-primary border-2 border-border hover:border-primary/50 transition-colors"
+          aria-label="Set up team sync"
+        >
+          <PeopleIcon />
+          <span className="hidden md:inline text-[10px] uppercase tracking-[0.15em]">team</span>
+        </button>
+        <AddTeamDialog open={addOpen} onOpenChange={setAddOpen} />
+      </>
+    )
+  }
+
+  async function signOut() {
+    if (!status?.team) return
+    const res = await fetch("/api/teams", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: status.team, action: "signout" }),
+    })
+    if (res.ok) {
+      toast.success(`Signed out of ${status.team}`)
+      router.refresh()
+    } else {
+      toast.error("Could not sign out")
+    }
+  }
 
   const dot = status.signedIn ? "bg-status-resolved" : "bg-status-blocked"
   const label = status.signedIn ? status.displayName ?? "signed in" : "not signed in"
@@ -63,6 +97,8 @@ export function TeamMenu({ status }: { status: SyncStatus | null }) {
   }
 
   return (
+    <>
+    <AddTeamDialog open={addOpen} onOpenChange={setAddOpen} />
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
@@ -92,10 +128,29 @@ export function TeamMenu({ status }: { status: SyncStatus | null }) {
               </p>
             ) : (
               <p className="text-muted-foreground">
-                Run <code className="text-primary/80">fathom login</code> in a terminal, then reload. Until then this dashboard shows local files only.
+                Sign in to see and edit this team&apos;s tasks. Until then this dashboard shows local files only.
               </p>
             )}
           </div>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          {!status.signedIn && status.team && (
+            <DropdownMenuItem
+              onClick={() => window.location.assign(`/api/teams/login?team=${encodeURIComponent(status.team!)}`)}
+              className="text-[11px] font-mono uppercase tracking-[0.15em] text-primary"
+            >
+              sign in with github
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={() => setAddOpen(true)} className="text-[11px] font-mono uppercase tracking-[0.15em]">
+            add a team
+          </DropdownMenuItem>
+          {status.signedIn && (
+            <DropdownMenuItem onClick={() => void signOut()} className="text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+              sign out
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
         {status.signedIn && (
           <>
@@ -135,5 +190,6 @@ export function TeamMenu({ status }: { status: SyncStatus | null }) {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   )
 }
