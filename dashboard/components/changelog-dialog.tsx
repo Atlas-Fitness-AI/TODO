@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { localDate } from "@/lib/activity"
 import {
   Dialog,
   DialogContent,
@@ -150,7 +151,7 @@ export function ChangelogDialog({
     [resolvedItems]
   )
 
-  const today = new Date().toISOString().split("T")[0]
+  const today = localDate()
   const previewMarkdown = useMemo(
     () =>
       pending.length > 0

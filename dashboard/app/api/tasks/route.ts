@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { localDate } from "@/lib/activity"
 import { readFile, writeFile, access } from "fs/promises"
 import { existsSync } from "fs"
 import { join } from "path"
@@ -24,7 +25,7 @@ async function isRegisteredProject(projectPath: string): Promise<boolean> {
 }
 
 function getToday(): string {
-  return new Date().toISOString().split("T")[0]
+  return localDate()
 }
 
 function applyStatusFields(item: TodoItem, oldStatus: Status, newStatus: Status): TodoItem {

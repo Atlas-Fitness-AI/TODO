@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { localDate } from "@/lib/activity"
 import { readFile, writeFile } from "fs/promises"
 import { join } from "path"
 import { homedir } from "os"
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const today = new Date().toISOString().split("T")[0]
+    const today = localDate()
     const section = buildReleaseMarkdown(cleanVersion, today, targetBranch, pending)
 
     // Write CHANGELOG.md (newest release first)

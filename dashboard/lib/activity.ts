@@ -20,3 +20,11 @@ export function formatRelativeTime(dateStr: string): string {
 
   return `${Math.floor(diffMonth / 12)}y ago`
 }
+
+/** Today's date in the machine's local timezone as YYYY-MM-DD. Task dates are calendar days, not UTC instants. */
+export function localDate(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
