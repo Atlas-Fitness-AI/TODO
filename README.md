@@ -207,9 +207,11 @@ One Supabase project equals one team. Everyone who signs in can read and write e
    ```
 
 3. Enable GitHub sign-in. Create a GitHub OAuth app (Settings → Developer settings → OAuth Apps) with callback URL `https://<your-project-ref>.supabase.co/auth/v1/callback`, then enable the GitHub provider in Supabase under Authentication → Sign In / Providers with the app's client ID and secret.
-4. Under Authentication → URL Configuration, set the Site URL to `http://localhost:3000` and add `http://localhost:300*/**` to Redirect URLs.
+4. Under Authentication → URL Configuration, set the Site URL to `http://localhost:3000` and add `http://localhost:300*/**` to Redirect URLs. If you open the dashboard from another machine, through a Tailscale serve proxy for example, add that origin too, like `https://your-host.ts.net:8443/**`.
 5. **Lock down membership.** Under Authentication → Sign In / Providers, turn off "Allow new users to sign up." Otherwise anyone holding your URL and publishable key could join. Add teammates by inviting their email from the Users page before their first sign-in.
-6. Add the project URL and publishable key to `~/.fathom/config.json` under a team name of your choosing:
+6. In the dashboard, click **team** in the header, choose **add a team**, and paste the project URL and publishable key under a name of your choosing. It checks that the project answers, saves the team to `~/.fathom/config.json`, and sends you straight into GitHub sign-in. Signing in from the dashboard also signs in the `fathom` command, since they share the session.
+
+   Prefer the terminal? The config file looks like this, and `fathom login <team>` does the sign-in:
 
    ```json
    {
@@ -223,12 +225,7 @@ One Supabase project equals one team. Everyone who signs in can read and write e
    }
    ```
 
-7. Sign in and import your projects:
-
-   ```bash
-   ~/.fathom/bin/fathom login
-   ~/.fathom/bin/fathom sync --all
-   ```
+7. Import your projects with `fathom sync --all`, or just open the dashboard, which syncs every registered project on its own.
 
 Each teammate repeats steps 6 and 7 with the same URL and key and their own GitHub account. Projects match across machines by their git `origin` remote. Add `~/.fathom/bin` to your `PATH` if you'd rather type `fathom`.
 
