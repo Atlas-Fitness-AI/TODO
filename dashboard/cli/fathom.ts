@@ -15,7 +15,9 @@
  * unconditionally.
  */
 
-import { resolve, basename } from "path"
+import { resolve, basename, join } from "path"
+import { existsSync } from "fs"
+import { execFileSync } from "child_process"
 import { createInterface } from "readline"
 import { loadConfig } from "../lib/projects"
 import { getAuthedClient, login, clearSession, readStoredSession, type AuthedClient } from "../lib/sync/session"
@@ -59,6 +61,27 @@ function summarize(r: SyncResult): string {
   const pushed = parts.length ? `pushed ${parts.join(", ")}` : "nothing to push"
   const pulled = r.filesChanged ? "files refreshed" : "files current"
   return `${r.projectName}: ${pushed}; ${pulled}`
+}
+
+/**
+ * The project root for a path. A directory with task files is its own root;
+ * otherwise, inside a git repo, the repo's top level (agents often run from a
+ * subdirectory). Falls back to the path itself.
+ */
+function projectRoot(path: string): string {
+  if (existsSync(join(path, "TODORULES.md")) || existsSync(join(path, "TODO.md"))) return path
+  try {
+    const top = execFileSync("git", ["-C", path, "rev-parse", "--show-toplevel"], { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim()
+    if (top && top !== path) {
+      out(`Using project root ${top}`)
+      return top
+    }
+  } catch {
+    // not a git repo
+  }
+  return path
 }
 
 /** Pick a team from the argument, or the only one, or ask. */
@@ -182,7 +205,7 @@ async function main() {
         const cfg = await loadConfig()
         targets.push(...cfg.projects.map((p) => p.path))
       } else {
-        targets.push(resolve(positional[0] ?? process.cwd()))
+        targets.push(projectRoot(resolve(positional[0] ?? process.cwd())))
       }
 
       let failed = false
